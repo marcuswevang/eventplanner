@@ -6,55 +6,186 @@ datasource db {
   provider = "postgresql"
 }
 
+// --- Enums ---
+
+enum EventType {
+  WEDDING
+  CHRISTENING
+  NAMING_CEREMONY
+  CONFIRMATION
+  JUBILEE
+  OTHER
+}
+
 enum GuestType {
   DINNER
   PARTY
 }
 
-model Guest {
+enum RsvpStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+enum TableShape {
+  ROUND
+  SQUARE
+  RECTANGLE
+  LONG
+}
+
+enum GallerySource {
+  UPLOAD
+  INSTAGRAM
+}
+
+enum UserRole {
+  CUSTOMER
+  SUPER_ADMIN
+}
+
+// --- Core Models ---
+
+model User {
   id        String   @id @default(cuid())
-  name      String
-  type      GuestType
-  allergies String?
-  rsvpStatus String  @default("PENDING") // PENDING, ACCEPTED, DECLINED
-  mobile    String?
-  address   String?
-  role      String?
-  tableId   String?
-  table     Table?   @relation(fields: [tableId], references: [id])
-  partnerId String?  @unique
-  partner   Guest?   @relation("GuestPartner", fields: [partnerId], references: [id])
-  partnerOf Guest?   @relation("GuestPartner")
+  email     String   @unique
+  password  String   // Hashed
+  name      String?
+  role      UserRole @default(CUSTOMER)
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  events    Event[]  @relation("UserEvents")
+}
+
+model Event {
+  id              String    @id @default(cuid())
+  slug            String    @unique // e.g., "mitt-bryllup-2026"
+  name            String
+  type            EventType @default(WEDDING)
+  date            DateTime
+  guestPassword   String?   // Shared password for guests
+  
+  // Settings (Json for flexibility)
+  // Contains: primaryHosts, subjectName, locations, etc.
+  settings        Json?     
+  
+  // Config (Feature Toggles)
+  // Contains: budgetEnabled, wishlistEnabled, spotifyId, instagramHash, etc.
+  config          Json?
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  users           User[]    @relation("UserEvents")
+  guests          Guest[]
+  tables          Table[]
+  wishlistItems   WishlistItem[]
+  songRequests    SongRequest[]
+  budgetItems     BudgetItem[]
+  galleryItems    GalleryItem[]
+}
+
+// --- Feature Models ---
+
+model Guest {
+  id         String     @id @default(cuid())
+  eventId    String
+  event      Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  
+  name       String
+  type       GuestType
+  allergies  String?
+  rsvpStatus RsvpStatus @default(PENDING)
+  mobile     String?
+  address    String?
+  role       String?    // e.g., "Toastmaster", "Godparent"
+  
+  tableId    String?
+  table      Table?     @relation(fields: [tableId], references: [id])
+  
+  partnerId  String?    @unique
+  partner    Guest?     @relation("GuestPartner", fields: [partnerId], references: [id])
+  partnerOf  Guest?     @relation("GuestPartner")
+  
+  createdAt  DateTime   @default(now())
+}
+
+model Table {
+  id        String     @id @default(cuid())
+  eventId   String
+  event     Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  name      String     // Table number or name
+  capacity  Int        @default(8)
+  shape     TableShape @default(ROUND) 
+  guests    Guest[]
+  
+  // Map Position
+  x         Int        @default(0)
+  y         Int        @default(0)
+  rotation  Int        @default(0)
+  isLocked  Boolean    @default(false)
+
+  @@unique([eventId, name]) // Names must be unique per event
 }
 
 model WishlistItem {
   id          String   @id @default(cuid())
+  eventId     String
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
   title       String
   description String?
   imageUrl    String?
   link        String?
   isPurchased Boolean  @default(false)
-  purchasedBy String?
+  purchasedBy String?  // Name of guest who bought it
+  
   createdAt   DateTime @default(now())
 }
 
 model SongRequest {
   id          String   @id @default(cuid())
+  eventId     String
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
   title       String
   artist      String
   requestedBy String
+  
   createdAt   DateTime @default(now())
 }
 
-model Table {
-  id       String  @id @default(cuid())
-  name     String  @unique // Table number or name
-  capacity Int     @default(8)
-  shape    String  @default("ROUND") // ROUND, SQUARE, RECTANGLE
-  guests   Guest[]
-  x        Int     @default(0)
-  y        Int     @default(0)
-  rotation Int     @default(0)
-  isLocked Boolean @default(false)
+model BudgetItem {
+  id            String   @id @default(cuid())
+  eventId       String
+  event         Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  description   String
+  category      String   // e.g., "Venue", "Food", "Dress"
+  estimatedCost Float    @default(0)
+  actualCost    Float?
+  isPaid        Boolean  @default(false)
+
+  createdAt     DateTime @default(now())
+}
+
+model GalleryItem {
+  id          String        @id @default(cuid())
+  eventId     String
+  event       Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  source      GallerySource // UPLOAD or INSTAGRAM
+  url         String        // Cloudinary URL or Instagram Media URL
+  thumbnailUrl String?
+  caption     String?
+  externalId  String?       // Instagram ID
+  
+  uploadedBy  String?       // Name of uploader if local
+  isApproved  Boolean       @default(true) // For moderation
+
+  createdAt   DateTime      @default(now())
 }

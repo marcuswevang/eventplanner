@@ -8,6 +8,7 @@ import AdminGuestForm from "@/components/AdminGuestForm";
 import { deleteGuest, deleteWishlistItem, createTable, deleteTable, updateTable, batchCreateTables, deleteTables, importGuests } from "@/app/actions";
 
 interface AdminDashboardProps {
+    eventId: string;
     guests: any[];
     items: any[];
     songs: any[];
@@ -16,7 +17,7 @@ interface AdminDashboardProps {
 
 type Tab = 'dashboard' | 'wishlist' | 'guests' | 'tables' | 'map';
 
-export default function AdminDashboard({ guests, items, songs, tables }: AdminDashboardProps) {
+export default function AdminDashboard({ eventId, guests, items, songs, tables }: AdminDashboardProps) {
     const [activeTab, setActiveTab] = useState<Tab>('dashboard');
     const [editingGuest, setEditingGuest] = useState<any>(null);
     const [newTableName, setNewTableName] = useState("");
@@ -85,9 +86,9 @@ export default function AdminDashboard({ guests, items, songs, tables }: AdminDa
                     startNumber = parseInt(match[2]);
                 }
 
-                result = await batchCreateTables(prefix, startNumber, newTableCount, newTableCapacity, newTableShape);
+                result = await batchCreateTables(eventId, prefix, startNumber, newTableCount, newTableCapacity, newTableShape as any);
             } else {
-                result = await createTable(newTableName, newTableCapacity, newTableShape);
+                result = await createTable(eventId, newTableName, newTableCapacity, newTableShape as any);
             }
 
             if (result.success) {
