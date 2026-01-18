@@ -1,0 +1,120 @@
+.main {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.hero {
+    position: relative;
+    min-height: 100vh;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-image: url('/hovedside.jpg');
+    /* Placeholder wedding image */
+    background-size: cover;
+    background-position: center;
+    padding: 4rem 1rem;
+}
+
+.overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(to bottom, rgba(252, 250, 247, 0.4), rgba(252, 250, 247, 0.9));
+    z-index: 1;
+}
+
+@media (prefers-color-scheme: dark) {
+    .overlay {
+        background: linear-gradient(to bottom, rgba(18, 18, 18, 0.4), rgba(18, 18, 18, 0.9));
+    }
+}
+
+.content {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    padding: 2rem;
+    max-width: 900px;
+    width: 100%;
+    animation: fadeIn 1.5s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.topSubtitle {
+    font-family: var(--font-sans);
+    text-transform: uppercase;
+    letter-spacing: 0.3em;
+    font-size: 0.9rem;
+    color: var(--accent-gold);
+    margin-bottom: 1rem;
+}
+
+.title {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.name {
+    font-size: clamp(3.5rem, 10vw, 6rem);
+    line-height: 1;
+}
+
+.ampersand {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 3rem;
+    color: var(--accent-gold);
+    margin: 0.5rem 0;
+}
+
+.date {
+    font-family: var(--font-sans);
+    font-size: 1.2rem;
+    letter-spacing: 0.15em;
+    margin-bottom: 3rem;
+    font-weight: 300;
+}
+
+.selectionTitle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    margin-bottom: 2rem;
+    font-size: 1.1rem;
+    font-family: var(--font-serif);
+    font-style: italic;
+    color: var(--text-muted);
+}
+
+.buttonGroup {
+    display: flex;
+    gap: 1.5rem;
+    justify-content: center;
+}
+
+@media (max-width: 600px) {
+    .buttonGroup {
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+    }
+}

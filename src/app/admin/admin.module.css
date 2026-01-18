@@ -1,0 +1,169 @@
+.container {
+    display: flex;
+    min-height: 100vh;
+    background-color: #f8f9fa;
+}
+
+@media (prefers-color-scheme: dark) {
+    .container {
+        background-color: #000;
+    }
+}
+
+.sidebar {
+    width: 260px;
+    background: white;
+    border-right: 1px solid #eee;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+}
+
+@media (prefers-color-scheme: dark) {
+    .sidebar {
+        background: #111;
+        border-color: #222;
+    }
+}
+
+.logo {
+    font-family: var(--font-serif);
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 3rem;
+    color: var(--accent-gold);
+}
+
+.nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.navItem {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.8rem 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--text-muted);
+    background: none;
+    border: none;
+    width: 100%;
+    text-align: left;
+    font-size: 1rem;
+    font-family: inherit;
+}
+
+.navItem:hover {
+    background: #fcfaf7;
+    color: var(--accent-gold);
+}
+
+.active {
+    background: #fcfaf7;
+    color: var(--accent-gold);
+    font-weight: 600;
+}
+
+.main {
+    flex: 1;
+    flex: 1;
+    padding: 2rem 3rem;
+    overflow-y: auto;
+}
+
+.header {
+    margin-bottom: 3rem;
+}
+
+.header h1 {
+    font-size: 1.5rem;
+    margin-top: 0;
+}
+
+.stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+    margin-bottom: 4rem;
+}
+
+.statCard {
+    padding: 2rem;
+    text-align: center;
+}
+
+.statCard h3 {
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+}
+
+.statValue {
+    font-size: 2.5rem;
+    font-family: var(--font-serif);
+    color: var(--accent-gold);
+    font-weight: 700;
+}
+
+.seating h2 {
+    margin-bottom: 2rem;
+    font-size: 1.8rem;
+}
+
+.tableGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 2rem;
+}
+
+.tableCard {
+    padding: 1.5rem;
+}
+
+.tableCard h3 {
+    color: var(--accent-gold);
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--glass-border);
+    padding-bottom: 0.5rem;
+}
+
+.guestList {
+    list-style: none;
+    font-size: 0.95rem;
+    margin-bottom: 1rem;
+}
+
+.guestList li {
+    padding: 0.3rem 0;
+}
+
+.seatCount {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-style: italic;
+    text-align: right;
+}
+
+.empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.wishlistSection {
+    margin-top: 4rem;
+}
+
+.wishlistSection h2 {
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+    color: var(--color-deep-charcoal);
+    font-family: 'Playfair Display', serif;
+}

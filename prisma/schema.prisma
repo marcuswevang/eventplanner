@@ -1,0 +1,60 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum GuestType {
+  DINNER
+  PARTY
+}
+
+model Guest {
+  id        String   @id @default(cuid())
+  name      String
+  type      GuestType
+  allergies String?
+  rsvpStatus String  @default("PENDING") // PENDING, ACCEPTED, DECLINED
+  mobile    String?
+  address   String?
+  role      String?
+  tableId   String?
+  table     Table?   @relation(fields: [tableId], references: [id])
+  partnerId String?  @unique
+  partner   Guest?   @relation("GuestPartner", fields: [partnerId], references: [id])
+  partnerOf Guest?   @relation("GuestPartner")
+  createdAt DateTime @default(now())
+}
+
+model WishlistItem {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  imageUrl    String?
+  link        String?
+  isPurchased Boolean  @default(false)
+  purchasedBy String?
+  createdAt   DateTime @default(now())
+}
+
+model SongRequest {
+  id          String   @id @default(cuid())
+  title       String
+  artist      String
+  requestedBy String
+  createdAt   DateTime @default(now())
+}
+
+model Table {
+  id       String  @id @default(cuid())
+  name     String  @unique // Table number or name
+  capacity Int     @default(8)
+  shape    String  @default("ROUND") // ROUND, SQUARE, RECTANGLE
+  guests   Guest[]
+  x        Int     @default(0)
+  y        Int     @default(0)
+  rotation Int     @default(0)
+  isLocked Boolean @default(false)
+}

@@ -1,0 +1,210 @@
+.container {
+    min-height: 100vh;
+    padding: 2rem;
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.nav {
+    margin-bottom: 3rem;
+}
+
+.backLink {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--accent-gold);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.backLink:hover {
+    color: var(--accent-gold);
+}
+
+.main {
+    text-align: center;
+}
+
+.header {
+    margin-bottom: 4rem;
+}
+
+.iconWrapper {
+    margin-bottom: 1.5rem;
+    display: flex;
+    justify-content: center;
+}
+
+.mainIcon {
+    color: var(--accent-gold);
+}
+
+.header h1 {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.intro {
+    font-family: var(--font-serif);
+    font-style: italic;
+    color: var(--text-muted);
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 2rem;
+    text-align: left;
+}
+
+.card {
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 250px;
+    transition: all 0.3s ease;
+}
+
+.purchased {
+    opacity: 0.7;
+    background: rgba(0, 0, 0, 0.02);
+    border-color: transparent;
+}
+
+@media (prefers-color-scheme: dark) {
+    .purchased {
+        background: rgba(255, 255, 255, 0.05);
+    }
+}
+
+.itemContent h3 {
+    font-size: 1.5rem;
+    margin-bottom: 0.75rem;
+    color: var(--accent-gold);
+}
+
+.description {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    margin-bottom: 1rem;
+}
+
+.link {
+    font-size: 0.9rem;
+    color: var(--accent-gold);
+    text-decoration: underline;
+    display: inline-block;
+    margin-bottom: 1rem;
+}
+
+.footer {
+    margin-top: 1.5rem;
+    border-top: 1px solid var(--glass-border);
+    padding-top: 1.5rem;
+}
+
+.status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--accent-green);
+    /* Soft green */
+    font-weight: 600;
+}
+
+.confirmText {
+    color: var(--text-main);
+    font-weight: 500;
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+.imageWrapper {
+    width: 100%;
+    height: 200px;
+    background: #f9f9f9;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.productImage {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.checkIcon {
+    color: var(--accent-green);
+}
+
+.purchaseButton {
+    width: 100%;
+    background: var(--accent-gold);
+    color: white;
+    border: none;
+    padding: 0.8rem;
+    border-radius: 8px;
+    font-family: var(--font-sans);
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.purchaseButton:hover {
+    background: var(--accent-gold-soft);
+}
+
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.input {
+    padding: 0.8rem;
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    background: var(--bg-color);
+    color: var(--text-main);
+    font-family: var(--font-sans);
+}
+
+.formActions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.confirmButton {
+    flex: 2;
+    background: var(--accent-gold);
+    color: white;
+    border: none;
+    padding: 0.6rem;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.cancelButton {
+    flex: 1;
+    background: transparent;
+    border: 1px solid #ccc;
+    color: var(--text-muted);
+    padding: 0.6rem;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.empty {
+    grid-column: 1 / -1;
+    padding: 4rem;
+    text-align: center;
+    font-style: italic;
+    color: var(--text-muted);
+}
