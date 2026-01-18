@@ -1,0 +1,25 @@
+services:
+  db:
+    image: postgres:18-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=wedding_user
+      - POSTGRES_PASSWORD=wedding_pass
+      - POSTGRES_DB=wedding_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+
+  app:
+    build: .
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://wedding_user:wedding_pass@db:5432/wedding_db
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:

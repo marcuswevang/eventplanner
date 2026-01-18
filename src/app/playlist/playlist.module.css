@@ -1,0 +1,146 @@
+.container {
+    min-height: 100vh;
+    padding: 2rem;
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.nav {
+    margin-bottom: 3rem;
+}
+
+.backLink {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--accent-gold);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.main {
+    text-align: center;
+}
+
+.header {
+    margin-bottom: 4rem;
+}
+
+.iconWrapper {
+    margin-bottom: 1.5rem;
+    display: flex;
+    justify-content: center;
+}
+
+.mainIcon {
+    color: var(--accent-gold);
+}
+
+.header h1 {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.intro {
+    font-family: var(--font-serif);
+    font-style: italic;
+    color: var(--text-muted);
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.content {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr;
+    gap: 2rem;
+    text-align: left;
+}
+
+@media (max-width: 800px) {
+    .content {
+        grid-template-columns: 1fr;
+    }
+}
+
+.formCard,
+.listCard {
+    padding: 2rem;
+}
+
+.formCard h3,
+.listCard h3 {
+    margin-bottom: 1.5rem;
+    font-size: 1.5rem;
+    color: var(--accent-gold);
+}
+
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+}
+
+.inputGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.inputGroup label {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+}
+
+.inputGroup input {
+    padding: 0.8rem;
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    background: var(--bg-color);
+    color: var(--text-main);
+    font-family: var(--font-sans);
+}
+
+.list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.songItem {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.songInfo {
+    display: flex;
+    flex-direction: column;
+}
+
+.songTitle {
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.songArtist {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.requestedBy {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 0.85rem;
+    color: var(--accent-gold);
+}
+
+.empty {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-muted);
+    font-style: italic;
+}

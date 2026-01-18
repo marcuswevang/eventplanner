@@ -1,0 +1,117 @@
+.container {
+    min-height: 100vh;
+    padding: 2rem;
+    color: var(--text-main);
+}
+
+.nav {
+    max-width: 1200px;
+    margin: 0 auto 2rem;
+}
+
+.backLink {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--accent-gold);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.main {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.intro {
+    font-size: 1.2rem;
+    opacity: 0.9;
+    max-width: 600px;
+    margin: 1rem auto 0;
+}
+
+.grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.card {
+    flex: 1 1 250px;
+    max-width: 340px;
+    padding: 1.5rem;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.icon {
+    width: 28px;
+    height: 28px;
+    color: var(--accent-gold);
+    margin-bottom: 0.25rem;
+}
+
+.card h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.8rem;
+    margin: 0;
+    color: var(--accent-gold);
+}
+
+.contactInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.name {
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.phone {
+    opacity: 0.8;
+}
+
+.person {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.hashtagBox {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(var(--accent-gold-rgb), 0.1);
+    padding: 0.5rem 1rem;
+    border-radius: 30px;
+    border: 1px solid rgba(var(--accent-gold-rgb), 0.3);
+    margin-top: 0.5rem;
+    color: var(--accent-gold);
+}
+
+.hashtag {
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: 1rem;
+    }
+
+    .grid {
+        grid-template-columns: 1fr;
+    }
+}
