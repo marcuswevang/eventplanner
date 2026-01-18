@@ -9,9 +9,10 @@ interface AdminGuestFormProps {
     guests?: any[];
     onCancel?: () => void;
     onSuccess?: () => void;
+    eventType?: string;
 }
 
-export default function AdminGuestForm({ eventId, initialData, tables = [], guests = [], onCancel, onSuccess }: AdminGuestFormProps & { eventId: string }) {
+export default function AdminGuestForm({ eventId, initialData, tables = [], guests = [], onCancel, onSuccess, eventType = 'WEDDING' }: AdminGuestFormProps & { eventId: string }) {
     const [name, setName] = useState("");
     const [isDinner, setIsDinner] = useState(false);
     const [isParty, setIsParty] = useState(false);
@@ -160,14 +161,43 @@ export default function AdminGuestForm({ eventId, initialData, tables = [], gues
                     />
                 </div>
                 <div style={{ flex: 1 }}>
-                    <label>Relasjon</label>
-                    <input
-                        type="text"
-                        value={role}
-                        onChange={(e) => setRole(e.target.value)}
-                        placeholder="Eks: Brudgommens mor"
-                        className={styles.input}
-                    />
+                    <label>Rolle</label>
+                    <div style={{ position: 'relative' }}>
+                        <select
+                            value={role}
+                            onChange={(e) => setRole(e.target.value)}
+                            className={styles.input}
+                            style={{ cursor: 'pointer', appearance: 'none' }}
+                        >
+                            <option value="">Ingen spesiell rolle</option>
+                            {eventType === 'WEDDING' && (
+                                <>
+                                    <option value="Brud">👰 Brud</option>
+                                    <option value="Brudgom">🤵 Brudgom</option>
+                                    <option value="Toastmaster">🎤 Toastmaster</option>
+                                    <option value="Forlover (Brud)">♀ Forlover (Brud)</option>
+                                    <option value="Forlover (Brudgom)">♂ Forlover (Brudgom)</option>
+                                    <option value="Takk for maten">🍽️ Takk for maten</option>
+                                </>
+                            )}
+                            {eventType === 'CHRISTENING' && (
+                                <>
+                                    <option value="Fadder">🙏 Fadder</option>
+                                    <option value="Toastmaster">🎤 Toastmaster</option>
+                                    <option value="Takk for maten">🍽️ Takk for maten</option>
+                                </>
+                            )}
+                            {eventType !== 'WEDDING' && eventType !== 'CHRISTENING' && (
+                                <>
+                                    <option value="Toastmaster">🎤 Toastmaster</option>
+                                    <option value="Takk for maten">🍽️ Takk for maten</option>
+                                </>
+                            )}
+                        </select>
+                        <div style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--text-muted)' }}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div className={styles.inputGroup}>

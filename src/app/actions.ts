@@ -219,7 +219,8 @@ export async function createEvent(data: {
                     name: guest.name,
                     role: guest.role,
                     type: "DINNER", // Default to dinner guests for key roles
-                    rsvpStatus: "ACCEPTED"
+                    rsvpStatus: "ACCEPTED",
+                    hasSpeech: guest.role === 'Toastmaster' || guest.role.includes('Forlover')
                 }))
             });
         }
@@ -632,7 +633,7 @@ export async function checkEventAuth(eventId: string) {
     return cookieStore.has(`event_auth_${eventId}`);
 }
 
-export async function updateEventSettings(eventId: string, data: { name?: string, date?: Date, guestPassword?: string | null, budgetGoal?: number, config?: any }) {
+export async function updateEventSettings(eventId: string, data: { name?: string, date?: Date, guestPassword?: string | null, budgetGoal?: number, config?: any, settings?: any }) {
     try {
         const session = await auth();
         if (!session?.user) return { error: "Ikke autorisert" };
@@ -662,7 +663,7 @@ export async function deleteBudgetItem(itemId: string) {
     }
 }
 
-export async function addAdminToEvent(eventId: string, email: string) {
+export async function addAdminToEvent(eventId: string, email: string, name: string = "", mobile: string = "") {
     try {
         const adminSession = await auth();
         if (!adminSession?.user) return { error: "Ikke autorisert" };
@@ -682,10 +683,11 @@ export async function addAdminToEvent(eventId: string, email: string) {
             userToAdd = await prisma.user.create({
                 data: {
                     email,
-                    name: email.split('@')[0], // Default name
+                    name: name || email.split('@')[0],
+                    mobile: mobile || null,
                     password: hashedPassword,
-                    role: "CUSTOMER", // Default role
-                    isActivated: true // Auto-activate invited admins? Or maybe keep false until they verify? Let's use true for now as they are invited by existing admin.
+                    role: "CUSTOMER",
+                    isActivated: true
                 }
             });
         }
@@ -709,6 +711,26 @@ export async function addAdminToEvent(eventId: string, email: string) {
     } catch (error) {
         console.error("Error adding admin:", error);
         return { error: "Kunne ikke legge til administrator." };
+    }
+}
+
+export async function regeneratePassword(email: string) {
+    try {
+        const adminSession = await auth();
+        if (!adminSession?.user) return { error: "Ikke autorisert" };
+
+        const tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
+        const hashedPassword = await bcrypt.hash(tempPassword, 10);
+
+        await prisma.user.update({
+            where: { email },
+            data: { password: hashedPassword }
+        });
+
+        return { success: true, message: `Nytt passord generert: ${tempPassword}` };
+    } catch (error) {
+        console.error("Error regenerating password:", error);
+        return { error: "Kunne ikke generere passord." };
     }
 }
 

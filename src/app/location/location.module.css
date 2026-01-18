@@ -1,0 +1,138 @@
+.container {
+    min-height: 100vh;
+    padding: 2rem;
+    background: var(--bg-color);
+}
+
+.nav {
+    max-width: 1000px;
+    margin: 0 auto 2rem;
+}
+
+.backLink {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.backLink:hover {
+    color: var(--accent-gold);
+}
+
+.main {
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.iconWrapper {
+    display: inline-flex;
+    padding: 1rem;
+    background: rgba(var(--accent-gold-rgb), 0.1);
+    border-radius: 50%;
+    margin-bottom: 1rem;
+}
+
+.mainIcon {
+    color: var(--accent-gold);
+}
+
+.intro {
+    color: var(--text-muted);
+    max-width: 500px;
+    margin: 1rem auto 0;
+}
+
+.content {
+    padding: 2rem;
+    text-align: center;
+}
+
+.venueGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.venueCard {
+    padding: 1.5rem;
+    text-align: center;
+}
+
+.venueIcon {
+    display: inline-flex;
+    padding: 0.8rem;
+    background: rgba(var(--accent-gold-rgb), 0.1);
+    border-radius: 50%;
+    margin-bottom: 1rem;
+    color: var(--accent-gold);
+}
+
+.venueCard h3 {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
+}
+
+.venueName {
+    font-size: 1.3rem;
+    color: var(--accent-gold);
+    margin-bottom: 0.5rem;
+}
+
+.venueAddress {
+    color: var(--text-main);
+    margin-bottom: 1rem;
+    font-size: 0.95rem;
+}
+
+.mapLink {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 1rem;
+    background: var(--accent-gold);
+    color: white;
+    border-radius: 20px;
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.3s;
+}
+
+.mapLink:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
+}
+
+.extraInfo {
+    padding: 1.5rem;
+    text-align: center;
+}
+
+.extraInfo h3 {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+}
+
+.extraInfo p {
+    color: var(--text-main);
+    white-space: pre-line;
+}
+
+.empty {
+    text-align: center;
+    color: var(--text-muted);
+    padding: 2rem;
+}

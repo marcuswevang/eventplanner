@@ -14,6 +14,22 @@ export default async function WishlistPage() {
         return <div>Ingen ønskeliste funnet.</div>;
     }
 
+    // Check if wishlist is visible to guests
+    const config = event.config as any;
+    if (config?.wishlistVisible === false) {
+        return (
+            <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-color)', textAlign: 'center', padding: '2rem' }}>
+                <div className="glass" style={{ padding: '3rem', borderRadius: '16px', maxWidth: '500px' }}>
+                    <Gift size={48} color="var(--accent-gold)" style={{ marginBottom: '1.5rem' }} />
+                    <h2>Ønskeliste utilgjengelig</h2>
+                    <p style={{ marginTop: '1rem', color: 'var(--text-muted)' }}>
+                        Ønskelisten er for øyeblikket ikke tilgjengelig.
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
     const term = getEventTerm(event.type);
 
     const items = await prisma.wishlistItem.findMany({

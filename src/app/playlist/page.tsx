@@ -14,6 +14,22 @@ export default async function PlaylistPage() {
         return <div>Ingen spilleliste funnet.</div>;
     }
 
+    // Check if songs/playlist is visible to guests
+    const config = event.config as any;
+    if (config?.songsVisible === false) {
+        return (
+            <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-color)', textAlign: 'center', padding: '2rem' }}>
+                <div className="glass" style={{ padding: '3rem', borderRadius: '16px', maxWidth: '500px' }}>
+                    <Music size={48} color="var(--accent-gold)" style={{ marginBottom: '1.5rem' }} />
+                    <h2>Spilleliste utilgjengelig</h2>
+                    <p style={{ marginTop: '1rem', color: 'var(--text-muted)' }}>
+                        Låtønsker er for øyeblikket ikke tilgjengelig.
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
     const term = getEventTerm(event.type);
 
     const requests = await prisma.songRequest.findMany({

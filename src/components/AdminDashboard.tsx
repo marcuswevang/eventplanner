@@ -7,7 +7,7 @@ import { Users, LayoutDashboard, Utensils, Gift, Trash2, Martini, Pencil, WheatO
 import AdminWishlistForm from "@/components/AdminWishlistForm";
 import AdminGuestForm from "@/components/AdminGuestForm";
 import GalleryUploader from "@/components/GalleryUploader";
-import { deleteGuest, deleteWishlistItem, createTable, deleteTable, updateTable, batchCreateTables, deleteTables, importGuests, deleteGalleryItem, updateEventSettings, addAdminToEvent, updateEventSlugDomain } from "@/app/actions";
+import { deleteGuest, deleteWishlistItem, createTable, deleteTable, updateTable, batchCreateTables, deleteTables, importGuests, deleteGalleryItem, updateEventSettings, addAdminToEvent, updateEventSlugDomain, regeneratePassword } from "@/app/actions";
 import ConfirmationModal from "@/components/ConfirmationModal";
 import Modal from "@/components/Modal";
 import AdminSidebar from "./AdminSidebar";
@@ -50,6 +50,7 @@ export default function AdminDashboard({ eventId, userId, guests, items, songs, 
     const [isAddAdminModalOpen, setIsAddAdminModalOpen] = useState(false);
     const [viewingAdmin, setViewingAdmin] = useState<any>(null);
     const [tempPasswordMessage, setTempPasswordMessage] = useState<string | null>(null);
+    const [isEditingAdmin, setIsEditingAdmin] = useState(false);
 
     // Confirmation Modal State
     const [confirmModal, setConfirmModal] = useState({
@@ -415,6 +416,7 @@ export default function AdminDashboard({ eventId, userId, guests, items, songs, 
                                     guests={guests}
                                     onCancel={() => setEditingGuest(null)}
                                     onSuccess={() => setEditingGuest(null)}
+                                    eventType={event.type}
                                 />
                             </div>
                             <div className={styles.tableGrid} style={{ flex: 1, gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
@@ -470,6 +472,15 @@ export default function AdminDashboard({ eventId, userId, guests, items, songs, 
                                                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                                                     <strong>{guest.name}</strong>
+                                                                    {/* Role Icons */}
+                                                                    {guest.role === 'Brud' && <span title="Brud" style={{ fontSize: '1rem' }}>👰</span>}
+                                                                    {guest.role === 'Brudgom' && <span title="Brudgom" style={{ fontSize: '1rem' }}>🤵</span>}
+                                                                    {guest.role === 'Toastmaster' && <span title="Toastmaster" style={{ fontSize: '1rem' }}>🎤</span>}
+                                                                    {guest.role === 'Forlover (Brud)' && <span title="Forlover (Brud)" style={{ color: '#ff69b4', fontWeight: 'bold' }}>♀</span>}
+                                                                    {guest.role === 'Forlover (Brudgom)' && <span title="Forlover (Brudgom)" style={{ color: '#4169e1', fontWeight: 'bold' }}>♂</span>}
+                                                                    {guest.role === 'Fadder' && <span title="Fadder" style={{ fontSize: '1rem' }}>🙏</span>}
+                                                                    {guest.role === 'Takk for maten' && <span title="Takk for maten" style={{ fontSize: '1rem' }}>🍽️</span>}
+                                                                    {/* Guest Type Icons */}
                                                                     {guest.type === 'DINNER' ? (
                                                                         <>
                                                                             <Utensils size={14} style={{ color: 'var(--accent-gold)' }} />
@@ -891,6 +902,44 @@ export default function AdminDashboard({ eventId, userId, guests, items, songs, 
                             </div>
 
                             <div className={`${styles.tableCard} glass`}>
+                                <h3>Roller</h3>
+                                <div className={styles.formGroup} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
+                                    <div>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'block' }}>Toastmaster</label>
+                                        <input
+                                            type="text"
+                                            defaultValue={(event.settings as any)?.toastmaster || ""}
+                                            placeholder="Navn på toastmaster"
+                                            className="sexy-input"
+                                            onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), toastmaster: e.target.value } })}
+                                        />
+                                    </div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                        <div>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'block' }}>Forlover (Din side)</label>
+                                            <input
+                                                type="text"
+                                                defaultValue={(event.settings as any)?.forlover1 || ""}
+                                                placeholder="Navn"
+                                                className="sexy-input"
+                                                onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), forlover1: e.target.value } })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'block' }}>Forlover (Partners side)</label>
+                                            <input
+                                                type="text"
+                                                defaultValue={(event.settings as any)?.forlover2 || ""}
+                                                placeholder="Navn"
+                                                className="sexy-input"
+                                                onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), forlover2: e.target.value } })}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className={`${styles.tableCard} glass`}>
                                 <h3>Nettadresse & Domene</h3>
                                 <div className={styles.formGroup} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
                                     <div>
@@ -936,7 +985,14 @@ export default function AdminDashboard({ eventId, userId, guests, items, songs, 
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         <span>Gjesteliste</span>
                                         <button
-                                            onClick={() => updateEventSettings(eventId, { config: { ...(event.config || {}), guestsEnabled: !(event.config?.guestsEnabled !== false) } })}
+                                            onClick={() => {
+                                                const isActive = event.config?.guestsEnabled !== false;
+                                                openConfirm(
+                                                    isActive ? "Deaktiver Gjesteliste" : "Aktiver Gjesteliste",
+                                                    `Er du sikker på at du vil ${isActive ? "deaktivere" : "aktivere"} gjestelisten?`,
+                                                    () => updateEventSettings(eventId, { config: { ...(event.config || {}), guestsEnabled: !isActive } })
+                                                );
+                                            }}
                                             className={event.config?.guestsEnabled !== false ? "luxury-button-soft" : "luxury-button-ghost"}
                                         >
                                             {(event.config?.guestsEnabled !== false) ? "Aktiv" : "Deaktivert"}
@@ -945,7 +1001,14 @@ export default function AdminDashboard({ eventId, userId, guests, items, songs, 
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         <span>Bordplassering</span>
                                         <button
-                                            onClick={() => updateEventSettings(eventId, { config: { ...(event.config || {}), seatingEnabled: !(event.config?.seatingEnabled !== false) } })}
+                                            onClick={() => {
+                                                const isActive = event.config?.seatingEnabled !== false;
+                                                openConfirm(
+                                                    isActive ? "Deaktiver Bordplassering" : "Aktiver Bordplassering",
+                                                    `Er du sikker på at du vil ${isActive ? "deaktivere" : "aktivere"} bordplassering?`,
+                                                    () => updateEventSettings(eventId, { config: { ...(event.config || {}), seatingEnabled: !isActive } })
+                                                );
+                                            }}
                                             className={event.config?.seatingEnabled !== false ? "luxury-button-soft" : "luxury-button-ghost"}
                                         >
                                             {(event.config?.seatingEnabled !== false) ? "Aktiv" : "Deaktivert"}
@@ -954,7 +1017,14 @@ export default function AdminDashboard({ eventId, userId, guests, items, songs, 
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         <span>Ønskeliste</span>
                                         <button
-                                            onClick={() => updateEventSettings(eventId, { config: { ...(event.config || {}), wishlistEnabled: !(event.config?.wishlistEnabled !== false) } })}
+                                            onClick={() => {
+                                                const isActive = event.config?.wishlistEnabled !== false;
+                                                openConfirm(
+                                                    isActive ? "Deaktiver Ønskeliste" : "Aktiver Ønskeliste",
+                                                    `Er du sikker på at du vil ${isActive ? "deaktivere" : "aktivere"} ønskelisten?`,
+                                                    () => updateEventSettings(eventId, { config: { ...(event.config || {}), wishlistEnabled: !isActive } })
+                                                );
+                                            }}
                                             className={event.config?.wishlistEnabled !== false ? "luxury-button-soft" : "luxury-button-ghost"}
                                         >
                                             {(event.config?.wishlistEnabled !== false) ? "Aktiv" : "Deaktivert"}
@@ -963,7 +1033,14 @@ export default function AdminDashboard({ eventId, userId, guests, items, songs, 
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         <span>Budsjett</span>
                                         <button
-                                            onClick={() => updateEventSettings(eventId, { config: { ...(event.config || {}), budgetEnabled: !(event.config?.budgetEnabled !== false) } })}
+                                            onClick={() => {
+                                                const isActive = event.config?.budgetEnabled !== false;
+                                                openConfirm(
+                                                    isActive ? "Deaktiver Budsjett" : "Aktiver Budsjett",
+                                                    `Er du sikker på at du vil ${isActive ? "deaktivere" : "aktivere"} budsjettet?`,
+                                                    () => updateEventSettings(eventId, { config: { ...(event.config || {}), budgetEnabled: !isActive } })
+                                                );
+                                            }}
                                             className={event.config?.budgetEnabled !== false ? "luxury-button-soft" : "luxury-button-ghost"}
                                         >
                                             {(event.config?.budgetEnabled !== false) ? "Aktiv" : "Deaktivert"}
@@ -972,7 +1049,14 @@ export default function AdminDashboard({ eventId, userId, guests, items, songs, 
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         <span>Galleri</span>
                                         <button
-                                            onClick={() => updateEventSettings(eventId, { config: { ...(event.config || {}), galleryEnabled: !(event.config?.galleryEnabled !== false) } })}
+                                            onClick={() => {
+                                                const isActive = event.config?.galleryEnabled !== false;
+                                                openConfirm(
+                                                    isActive ? "Deaktiver Galleri" : "Aktiver Galleri",
+                                                    `Er du sikker på at du vil ${isActive ? "deaktivere" : "aktivere"} galleriet?`,
+                                                    () => updateEventSettings(eventId, { config: { ...(event.config || {}), galleryEnabled: !isActive } })
+                                                );
+                                            }}
                                             className={event.config?.galleryEnabled !== false ? "luxury-button-soft" : "luxury-button-ghost"}
                                         >
                                             {(event.config?.galleryEnabled !== false) ? "Aktiv" : "Deaktivert"}
@@ -982,78 +1066,317 @@ export default function AdminDashboard({ eventId, userId, guests, items, songs, 
                             </div>
 
                             <div className={`${styles.tableCard} glass`}>
-                                <h3>Administratorer</h3>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1rem' }}>
+                                <h3>Gjestevisning</h3>
+                                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                                    Velg hvilke seksjoner gjestene skal se på arrangementsiden.
+                                </p>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <span>📋 RSVP / Svar</span>
+                                        <button
+                                            onClick={() => updateEventSettings(eventId, { config: { ...(event.config || {}), rsvpVisible: !(event.config?.rsvpVisible !== false) } })}
+                                            className={(event.config?.rsvpVisible !== false) ? "luxury-button-soft" : "luxury-button-ghost"}
+                                            style={{ fontSize: '0.8rem', padding: '0.3rem 0.8rem' }}
+                                        >
+                                            {(event.config?.rsvpVisible !== false) ? "Synlig" : "Skjult"}
+                                        </button>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <span>📅 Program</span>
+                                        <button
+                                            onClick={() => updateEventSettings(eventId, { config: { ...(event.config || {}), programVisible: !(event.config?.programVisible !== false) } })}
+                                            className={(event.config?.programVisible !== false) ? "luxury-button-soft" : "luxury-button-ghost"}
+                                            style={{ fontSize: '0.8rem', padding: '0.3rem 0.8rem' }}
+                                        >
+                                            {(event.config?.programVisible !== false) ? "Synlig" : "Skjult"}
+                                        </button>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <span>📍 Lokasjon</span>
+                                        <button
+                                            onClick={() => updateEventSettings(eventId, { config: { ...(event.config || {}), locationVisible: !(event.config?.locationVisible !== false) } })}
+                                            className={(event.config?.locationVisible !== false) ? "luxury-button-soft" : "luxury-button-ghost"}
+                                            style={{ fontSize: '0.8rem', padding: '0.3rem 0.8rem' }}
+                                        >
+                                            {(event.config?.locationVisible !== false) ? "Synlig" : "Skjult"}
+                                        </button>
+                                    </div>
+                                    {/* Only show Ønskeliste toggle if wishlist module is enabled */}
+                                    {(event.config?.wishlistEnabled !== false) && (
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span>🎁 Ønskeliste</span>
+                                            <button
+                                                onClick={() => updateEventSettings(eventId, { config: { ...(event.config || {}), wishlistVisible: !(event.config?.wishlistVisible !== false) } })}
+                                                className={(event.config?.wishlistVisible !== false) ? "luxury-button-soft" : "luxury-button-ghost"}
+                                                style={{ fontSize: '0.8rem', padding: '0.3rem 0.8rem' }}
+                                            >
+                                                {(event.config?.wishlistVisible !== false) ? "Synlig" : "Skjult"}
+                                            </button>
+                                        </div>
+                                    )}
+                                    {/* Only show Galleri toggle if gallery module is enabled */}
+                                    {(event.config?.galleryEnabled !== false) && (
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span>📸 Galleri</span>
+                                            <button
+                                                onClick={() => updateEventSettings(eventId, { config: { ...(event.config || {}), galleryVisible: !(event.config?.galleryVisible !== false) } })}
+                                                className={(event.config?.galleryVisible !== false) ? "luxury-button-soft" : "luxury-button-ghost"}
+                                                style={{ fontSize: '0.8rem', padding: '0.3rem 0.8rem' }}
+                                            >
+                                                {(event.config?.galleryVisible !== false) ? "Synlig" : "Skjult"}
+                                            </button>
+                                        </div>
+                                    )}
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <span>🎵 Låtønsker</span>
+                                        <button
+                                            onClick={() => updateEventSettings(eventId, { config: { ...(event.config || {}), songsVisible: !(event.config?.songsVisible !== false) } })}
+                                            className={(event.config?.songsVisible !== false) ? "luxury-button-soft" : "luxury-button-ghost"}
+                                            style={{ fontSize: '0.8rem', padding: '0.3rem 0.8rem' }}
+                                        >
+                                            {(event.config?.songsVisible !== false) ? "Synlig" : "Skjult"}
+                                        </button>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <span>🍽️ Meny</span>
+                                        <button
+                                            onClick={() => updateEventSettings(eventId, { config: { ...(event.config || {}), menuVisible: !(event.config?.menuVisible !== false) } })}
+                                            className={(event.config?.menuVisible !== false) ? "luxury-button-soft" : "luxury-button-ghost"}
+                                            style={{ fontSize: '0.8rem', padding: '0.3rem 0.8rem' }}
+                                        >
+                                            {(event.config?.menuVisible !== false) ? "Synlig" : "Skjult"}
+                                        </button>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <span>👔 Dresscode</span>
+                                        <button
+                                            onClick={() => updateEventSettings(eventId, { config: { ...(event.config || {}), dresscodeVisible: !(event.config?.dresscodeVisible !== false) } })}
+                                            className={(event.config?.dresscodeVisible !== false) ? "luxury-button-soft" : "luxury-button-ghost"}
+                                            style={{ fontSize: '0.8rem', padding: '0.3rem 0.8rem' }}
+                                        >
+                                            {(event.config?.dresscodeVisible !== false) ? "Synlig" : "Skjult"}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Program Content - only show if visible to guests */}
+                            {(event.config?.programVisible !== false) && (
+                                <div className={`${styles.tableCard} glass`}>
+                                    <h3>📅 Program / Tidslinje</h3>
+                                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                                        Legg til programpunkter som gjestene kan se.
+                                    </p>
+                                    <textarea
+                                        defaultValue={(event.settings as any)?.programContent || ""}
+                                        placeholder="F.eks:&#10;14:00 - Vielse i kirken&#10;15:30 - Ankomst til lokalet&#10;16:00 - Velkomstdrink&#10;17:30 - Middag serveres&#10;..."
+                                        className="sexy-input"
+                                        style={{ minHeight: '150px', resize: 'vertical' }}
+                                        onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), programContent: e.target.value } })}
+                                    />
+                                </div>
+                            )}
+
+                            {/* Location Content - Multiple Venues - only show if visible to guests */}
+                            {(event.config?.locationVisible !== false) && (
+                                <div className={`${styles.tableCard} glass`}>
+                                    <h3>📍 Lokasjoner</h3>
+                                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                                        Legg til informasjon om de ulike stedene for arrangementet.
+                                    </p>
+
+                                    {/* Ceremony Venue */}
+                                    <div style={{ marginBottom: '2rem', padding: '1rem', background: 'rgba(0,0,0,0.05)', borderRadius: '8px' }}>
+                                        <h4 style={{ margin: '0 0 1rem 0', fontSize: '1rem' }}>⛪ Seremoni / Vielse</h4>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                                            <input
+                                                type="text"
+                                                defaultValue={(event.settings as any)?.ceremonyName || ""}
+                                                placeholder="Stedsnavn (f.eks: Oslo Domkirke)"
+                                                className="sexy-input"
+                                                onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), ceremonyName: e.target.value } })}
+                                            />
+                                            <input
+                                                type="text"
+                                                defaultValue={(event.settings as any)?.ceremonyAddress || ""}
+                                                placeholder="Adresse"
+                                                className="sexy-input"
+                                                onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), ceremonyAddress: e.target.value } })}
+                                            />
+                                            <input
+                                                type="url"
+                                                defaultValue={(event.settings as any)?.ceremonyMapUrl || ""}
+                                                placeholder="Google Maps lenke (valgfritt)"
+                                                className="sexy-input"
+                                                onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), ceremonyMapUrl: e.target.value } })}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Dinner Venue */}
+                                    <div style={{ marginBottom: '2rem', padding: '1rem', background: 'rgba(0,0,0,0.05)', borderRadius: '8px' }}>
+                                        <h4 style={{ margin: '0 0 1rem 0', fontSize: '1rem' }}>🍽️ Middagslokale</h4>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                                            <input
+                                                type="text"
+                                                defaultValue={(event.settings as any)?.dinnerName || ""}
+                                                placeholder="Stedsnavn (f.eks: Grand Hotel)"
+                                                className="sexy-input"
+                                                onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), dinnerName: e.target.value } })}
+                                            />
+                                            <input
+                                                type="text"
+                                                defaultValue={(event.settings as any)?.dinnerAddress || ""}
+                                                placeholder="Adresse"
+                                                className="sexy-input"
+                                                onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), dinnerAddress: e.target.value } })}
+                                            />
+                                            <input
+                                                type="url"
+                                                defaultValue={(event.settings as any)?.dinnerMapUrl || ""}
+                                                placeholder="Google Maps lenke (valgfritt)"
+                                                className="sexy-input"
+                                                onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), dinnerMapUrl: e.target.value } })}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Party Venue */}
+                                    <div style={{ padding: '1rem', background: 'rgba(0,0,0,0.05)', borderRadius: '8px' }}>
+                                        <h4 style={{ margin: '0 0 1rem 0', fontSize: '1rem' }}>🎉 Festlokale</h4>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                                            <input
+                                                type="text"
+                                                defaultValue={(event.settings as any)?.partyName || ""}
+                                                placeholder="Stedsnavn (samme som middag hvis likt)"
+                                                className="sexy-input"
+                                                onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), partyName: e.target.value } })}
+                                            />
+                                            <input
+                                                type="text"
+                                                defaultValue={(event.settings as any)?.partyAddress || ""}
+                                                placeholder="Adresse"
+                                                className="sexy-input"
+                                                onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), partyAddress: e.target.value } })}
+                                            />
+                                            <input
+                                                type="url"
+                                                defaultValue={(event.settings as any)?.partyMapUrl || ""}
+                                                placeholder="Google Maps lenke (valgfritt)"
+                                                className="sexy-input"
+                                                onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), partyMapUrl: e.target.value } })}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Extra info */}
+                                    <div style={{ marginTop: '1.5rem' }}>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'block' }}>Ekstra info (parkering, transport, etc.)</label>
+                                        <textarea
+                                            defaultValue={(event.settings as any)?.locationInfo || ""}
+                                            placeholder="F.eks: Parkering tilgjengelig, nærmeste busstopp, etc."
+                                            className="sexy-input"
+                                            style={{ minHeight: '80px', resize: 'vertical' }}
+                                            onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), locationInfo: e.target.value } })}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Menu Content - only show if visible to guests */}
+                            {(event.config?.menuVisible !== false) && (
+                                <div className={`${styles.tableCard} glass`}>
+                                    <h3>🍽️ Meny</h3>
+                                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                                        Beskriv menyen for middagen.
+                                    </p>
+                                    <textarea
+                                        defaultValue={(event.settings as any)?.menuContent || ""}
+                                        placeholder="F.eks:&#10;Forrett: Reker med aioli&#10;Hovedrett: Oksefilet med rødvinssaus&#10;Dessert: Sjokoladefondant&#10;&#10;Vegetar og allergitilpasning tilgjengelig."
+                                        className="sexy-input"
+                                        style={{ minHeight: '150px', resize: 'vertical' }}
+                                        onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), menuContent: e.target.value } })}
+                                    />
+                                </div>
+                            )}
+
+                            {/* Dresscode Content - only show if visible to guests */}
+                            {(event.config?.dresscodeVisible !== false) && (
+                                <div className={`${styles.tableCard} glass`}>
+                                    <h3>👔 Dresscode</h3>
+                                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                                        Beskriv antrekkskode for gjestene.
+                                    </p>
+                                    <textarea
+                                        defaultValue={(event.settings as any)?.dresscodeContent || ""}
+                                        placeholder="F.eks:&#10;Dresscode: Festlig&#10;Damer: Lang kjole eller festantrekk&#10;Herrer: Dress eller mørk dress"
+                                        className="sexy-input"
+                                        style={{ minHeight: '100px', resize: 'vertical' }}
+                                        onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), dresscodeContent: e.target.value } })}
+                                    />
+                                </div>
+                            )}
+
+                            <div className={`${styles.tableCard} glass`}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                    <h3 style={{ margin: 0 }}>Administratorer</h3>
+                                    <button
+                                        className="luxury-button"
+                                        onClick={() => setIsAddAdminModalOpen(true)}
+                                        style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                                    >
+                                        <PlusCircle size={14} />
+                                        Legg til
+                                    </button>
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                     {event.users?.map((u: any) => (
-                                        <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', padding: '0.5rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px' }}>
+                                        <div
+                                            key={u.id}
+                                            style={{
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                padding: '0.8rem',
+                                                background: 'rgba(255,255,255,0.03)',
+                                                borderRadius: '8px',
+                                                cursor: 'pointer',
+                                                border: '1px solid transparent',
+                                                transition: 'all 0.2s'
+                                            }}
+                                            onClick={() => setViewingAdmin(u)}
+                                            className={styles.listItem} // Ensure you have this or use inline hover styles
+                                        >
                                             <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 500 }}>
                                                     <User size={16} color="var(--accent-gold)" />
-                                                    {u.name ? `${u.name} (${u.email})` : u.email}
+                                                    {u.name || "Navnløs"}
                                                 </span>
-                                                <span style={{ fontSize: '0.75rem', color: u.isActivated ? 'var(--accent-green)' : 'var(--text-muted)', marginLeft: '1.5rem' }}>
-                                                    {u.isActivated ? "Aktiv" : "Ikke aktivert"}
+                                                <span style={{ fontSize: '0.75rem', color: u.lastLogin ? 'var(--accent-green)' : 'var(--text-muted)', marginLeft: '1.5rem' }}>
+                                                    {u.lastLogin ? "Aktiv" : "Invitert"}
                                                 </span>
                                             </div>
                                             {u.id !== userId && (
                                                 <button
-                                                    className="luxury-button-ghost"
-                                                    style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem', color: '#ff4444' }}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        openConfirm(
+                                                            "Fjern administrator",
+                                                            `Er du sikker på at du vil fjerne ${u.name || u.email} fra arrangementet?`,
+                                                            async () => {
+                                                                // TODO: Add remove admin action
+                                                                alert("Fjerning av administrator er ikke implementert ennå i denne demoen.");
+                                                            }
+                                                        );
+                                                    }}
+                                                    style={{ background: 'none', border: 'none', color: 'var(--text-muted)', padding: '0.4rem', cursor: 'pointer' }}
                                                 >
-                                                    Fjern
+                                                    <Trash2 size={16} />
                                                 </button>
                                             )}
                                         </div>
                                     ))}
-                                    <div style={{ marginTop: '1rem', borderTop: '1px solid var(--glass-border)', paddingTop: '1rem' }}>
-                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'block' }}>Legg til administrator</label>
-                                        <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'column' }}>
-                                            <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                                <input
-                                                    type="text"
-                                                    placeholder="Navn"
-                                                    className="sexy-input"
-                                                    id="newAdminName"
-                                                    style={{ flex: 1 }}
-                                                />
-                                                <input
-                                                    type="email"
-                                                    placeholder="E-post"
-                                                    className="sexy-input"
-                                                    id="newAdminEmail"
-                                                    style={{ flex: 2 }}
-                                                />
-                                            </div>
-                                            <button
-                                                className="luxury-button"
-                                                style={{ alignSelf: 'flex-start' }}
-                                                onClick={async () => {
-                                                    const emailInput = document.getElementById('newAdminEmail') as HTMLInputElement;
-                                                    const nameInput = document.getElementById('newAdminName') as HTMLInputElement;
-
-                                                    if (!emailInput.value) {
-                                                        alert("Må ha e-post");
-                                                        return;
-                                                    }
-
-                                                    const res = await addAdminToEvent(eventId, emailInput.value, nameInput.value);
-
-                                                    if (res.error) {
-                                                        alert(res.error);
-                                                    } else {
-                                                        alert(res.message || "Administrator lagt til!");
-                                                        emailInput.value = "";
-                                                        nameInput.value = "";
-                                                    }
-                                                }}
-                                            >
-                                                Legg til
-                                            </button>
-                                        </div>
-                                        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-                                            Hvis brukeren ikke finnes, opprettes en ny konto med et generert passord som vises her.
-                                        </p>
-                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1309,6 +1632,200 @@ export default function AdminDashboard({ eventId, userId, guests, items, songs, 
                 )}
 
             </main>
+
+            {/* Add Admin Modal */}
+            <Modal
+                isOpen={isAddAdminModalOpen}
+                title="Legg til administrator"
+                onClose={() => setIsAddAdminModalOpen(false)}
+            >
+                <form
+                    onSubmit={async (e) => {
+                        e.preventDefault();
+                        const form = e.target as HTMLFormElement;
+                        const formData = new FormData(form);
+                        const name = formData.get('name') as string;
+                        const email = formData.get('email') as string;
+                        const mobile = formData.get('mobile') as string;
+
+                        const res = await addAdminToEvent(eventId, email, name, mobile);
+                        if (res.error) {
+                            alert(res.error);
+                        } else {
+                            setIsAddAdminModalOpen(false);
+                            if (res.message && res.message.includes("passord")) {
+                                setTempPasswordMessage(res.message);
+                            } else {
+                                alert(res.message);
+                            }
+                        }
+                    }}
+                    style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}
+                >
+                    <div>
+                        <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>Navn</label>
+                        <input name="name" type="text" className="sexy-input" placeholder="Ola Nordmann" required />
+                    </div>
+                    <div>
+                        <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>E-post</label>
+                        <input name="email" type="email" className="sexy-input" placeholder="ola@eksempel.no" required />
+                    </div>
+                    <div>
+                        <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>Mobilnummer</label>
+                        <input name="mobile" type="tel" className="sexy-input" placeholder="98765432" required />
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
+                        <button type="button" onClick={() => setIsAddAdminModalOpen(false)} className="luxury-button-ghost">Avbryt</button>
+                        <button type="submit" className="luxury-button">Inviter</button>
+                    </div>
+                </form>
+            </Modal>
+
+            {/* View Admin Modal */}
+            <Modal
+                isOpen={!!viewingAdmin}
+                title="Administrator Detaljer"
+                onClose={() => { setViewingAdmin(null); setIsEditingAdmin(false); }}
+            >
+                {viewingAdmin && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', position: 'relative' }}>
+                        {/* Edit toggle in upper right */}
+                        {!isEditingAdmin && (
+                            <button
+                                onClick={() => setIsEditingAdmin(true)}
+                                style={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    right: 0,
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    color: 'var(--text-muted)',
+                                    padding: '0.5rem',
+                                    transition: 'color 0.2s'
+                                }}
+                                title="Rediger"
+                                onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--accent-gold)')}
+                                onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+                            >
+                                <Pencil size={18} />
+                            </button>
+                        )}
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+                            <div style={{ padding: '1rem', background: 'var(--glass-bg)', borderRadius: '50%' }}>
+                                <User size={32} color="var(--accent-gold)" />
+                            </div>
+                            <div>
+                                <h3 style={{ margin: 0 }}>{viewingAdmin.name || "Ingen navn"}</h3>
+                                <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>{viewingAdmin.role}</p>
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1rem', fontSize: '0.9rem' }}>
+                            <span style={{ color: 'var(--text-muted)' }}>E-post:</span>
+                            <span>{viewingAdmin.email}</span>
+
+                            <span style={{ color: 'var(--text-muted)' }}>Mobil:</span>
+                            {isEditingAdmin ? (
+                                <input
+                                    type="tel"
+                                    defaultValue={viewingAdmin.mobile || ""}
+                                    placeholder="Legg til mobilnummer"
+                                    className="sexy-input"
+                                    style={{ padding: '0.4rem', fontSize: '0.9rem' }}
+                                    id="editAdminMobile"
+                                />
+                            ) : (
+                                <span>{viewingAdmin.mobile || "-"}</span>
+                            )}
+
+                            <span style={{ color: 'var(--text-muted)' }}>Status:</span>
+                            <span style={{ color: viewingAdmin.lastLogin ? 'var(--accent-green)' : '#e74c3c' }}>
+                                {viewingAdmin.lastLogin ? "Aktiv" : "Invitert"}
+                            </span>
+
+                            <span style={{ color: 'var(--text-muted)' }}>Sist innlogget:</span>
+                            <span>{viewingAdmin.lastLogin ? new Date(viewingAdmin.lastLogin).toLocaleString() : "Aldri"}</span>
+
+                            <span style={{ color: 'var(--text-muted)' }}>Opprettet:</span>
+                            <span>{new Date(viewingAdmin.createdAt).toLocaleDateString()}</span>
+                        </div>
+
+                        {isEditingAdmin && (
+                            <div style={{ marginTop: '1rem', padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+                                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>Passordadministrasjon</p>
+                                <button
+                                    onClick={async () => {
+                                        if (confirm("Er du sikker på at du vil generere et nytt passord? Det gamle vil slutte å virke.")) {
+                                            const res = await regeneratePassword(viewingAdmin.email);
+                                            if (res.error) alert(res.error);
+                                            else {
+                                                setViewingAdmin(null);
+                                                setIsEditingAdmin(false);
+                                                setTempPasswordMessage(res.message ?? null);
+                                            }
+                                        }
+                                    }}
+                                    className="luxury-button"
+                                    style={{ fontSize: '0.8rem', padding: '0.5rem 1rem' }}
+                                >
+                                    Regenerer passord
+                                </button>
+                            </div>
+                        )}
+
+                        <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                            {isEditingAdmin && (
+                                <button
+                                    onClick={async () => {
+                                        const mobileInput = document.getElementById('editAdminMobile') as HTMLInputElement;
+                                        if (mobileInput && mobileInput.value !== (viewingAdmin.mobile || "")) {
+                                            // TODO: Add updateUserMobile action
+                                            alert("Mobilnummer lagret (funksjon kommer)");
+                                        }
+                                        setIsEditingAdmin(false);
+                                    }}
+                                    className="luxury-button"
+                                    style={{ fontSize: '0.8rem' }}
+                                >
+                                    Lagre
+                                </button>
+                            )}
+                            <button onClick={() => { setViewingAdmin(null); setIsEditingAdmin(false); }} className="luxury-button-soft">Lukk</button>
+                        </div>
+                    </div>
+                )}
+            </Modal>
+
+            {/* Temp Password Modal */}
+            <Modal
+                isOpen={!!tempPasswordMessage}
+                title="Bruker Opprettet"
+                onClose={() => setTempPasswordMessage(null)}
+            >
+                <div style={{ textAlign: 'center' }}>
+                    <p style={{ marginBottom: '1.5rem', lineHeight: '1.6' }}>
+                        {tempPasswordMessage?.replace(/: (.*)/, "")}:
+                    </p>
+                    <div style={{
+                        background: 'rgba(0,0,0,0.2)',
+                        padding: '1rem',
+                        borderRadius: '8px',
+                        fontSize: '1.2rem',
+                        fontFamily: 'monospace',
+                        marginBottom: '1.5rem',
+                        border: '1px dashed var(--accent-gold)',
+                        color: 'var(--accent-gold)'
+                    }}>
+                        {tempPasswordMessage?.split(": ")[1]}
+                    </div>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+                        Vennligst kopier dette passordet og send det til brukeren. De vil bli bedt om å bytte passord ved første innlogging.
+                    </p>
+                    <button onClick={() => setTempPasswordMessage(null)} className="luxury-button">OK, jeg har kopiert det</button>
+                </div>
+            </Modal>
 
             <ConfirmationModal
                 isOpen={confirmModal.isOpen}

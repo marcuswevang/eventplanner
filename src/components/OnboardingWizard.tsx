@@ -45,6 +45,8 @@ export default function OnboardingWizard() {
             galleryEnabled: true,
         },
         roles: {
+            bride: "" as string,
+            groom: "" as string,
             bridesmaids: [""] as string[],
             groomsmen: [""] as string[],
             toastmaster: "" as string,
@@ -74,6 +76,8 @@ export default function OnboardingWizard() {
                 ...formData,
                 date: new Date(formData.date),
                 initialGuests: [
+                    ...(formData.roles.bride ? [{ name: formData.roles.bride, role: 'Brud' }] : []),
+                    ...(formData.roles.groom ? [{ name: formData.roles.groom, role: 'Brudgom' }] : []),
                     ...formData.roles.bridesmaids.filter(n => n.trim()).map(n => ({ name: n, role: 'Forlover (Brud)' })),
                     ...formData.roles.groomsmen.filter(n => n.trim()).map(n => ({ name: n, role: 'Forlover (Brudgom)' })),
                     ...(formData.roles.toastmaster ? [{ name: formData.roles.toastmaster, role: 'Toastmaster' }] : []),
@@ -170,6 +174,30 @@ export default function OnboardingWizard() {
 
                     {currentStep.id === "roles" && formData.type === "WEDDING" && (
                         <div className={styles.formGroup}>
+                            <div className={styles.field} style={{ marginBottom: '1.5rem' }}>
+                                <label>👰 Brud</label>
+                                <input
+                                    type="text"
+                                    value={formData.roles.bride}
+                                    onChange={(e) => setFormData({
+                                        ...formData,
+                                        roles: { ...formData.roles, bride: e.target.value }
+                                    })}
+                                    placeholder="Brudens navn"
+                                />
+                            </div>
+                            <div className={styles.field} style={{ marginBottom: '1.5rem' }}>
+                                <label>🤵 Brudgom</label>
+                                <input
+                                    type="text"
+                                    value={formData.roles.groom}
+                                    onChange={(e) => setFormData({
+                                        ...formData,
+                                        roles: { ...formData.roles, groom: e.target.value }
+                                    })}
+                                    placeholder="Brudgommens navn"
+                                />
+                            </div>
                             <div className={styles.field}>
                                 <label>Brudens forlover(e)</label>
                                 {formData.roles.bridesmaids.map((name, idx) => (

@@ -29,6 +29,22 @@ export default async function GalleryPage({
         where: { id: eventId }
     });
 
+    // Check if gallery is visible to guests
+    const config = event?.config as any;
+    if (config?.galleryVisible === false) {
+        return (
+            <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-color)', textAlign: 'center', padding: '2rem' }}>
+                <div className="glass" style={{ padding: '3rem', borderRadius: '16px', maxWidth: '500px' }}>
+                    <Camera size={48} color="var(--accent-gold)" style={{ marginBottom: '1.5rem' }} />
+                    <h2>Galleri utilgjengelig</h2>
+                    <p style={{ marginTop: '1rem', color: 'var(--text-muted)' }}>
+                        Galleriet er for øyeblikket ikke tilgjengelig.
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
     const items = await prisma.galleryItem.findMany({
         where: { eventId },
         orderBy: { createdAt: "desc" }
