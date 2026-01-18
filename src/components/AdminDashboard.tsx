@@ -3,11 +3,13 @@
 import { useState, useEffect, useRef } from "react";
 import EventSwitcher from "./EventSwitcher";
 import styles from "@/app/admin/admin.module.css";
-import { Users, LayoutDashboard, Utensils, Gift, Trash2, Martini, Pencil, WheatOff, MilkOff, Vegan, EggOff, PlusCircle, Circle, Square, RectangleHorizontal, Check, X, StretchHorizontal, CheckSquare, Lock, Unlock, FileUp, Wallet, Camera, Settings } from "lucide-react";
+import { Users, LayoutDashboard, Utensils, Gift, Trash2, Martini, Pencil, WheatOff, MilkOff, Vegan, EggOff, PlusCircle, Circle, Square, RectangleHorizontal, Check, X, StretchHorizontal, CheckSquare, Lock, Unlock, FileUp, Wallet, Camera, Settings, User } from "lucide-react";
 import AdminWishlistForm from "@/components/AdminWishlistForm";
 import AdminGuestForm from "@/components/AdminGuestForm";
 import GalleryUploader from "@/components/GalleryUploader";
-import { deleteGuest, deleteWishlistItem, createTable, deleteTable, updateTable, batchCreateTables, deleteTables, importGuests, deleteGalleryItem, updateEventSettings, addAdminToEvent } from "@/app/actions";
+import { deleteGuest, deleteWishlistItem, createTable, deleteTable, updateTable, batchCreateTables, deleteTables, importGuests, deleteGalleryItem, updateEventSettings, addAdminToEvent, updateEventSlugDomain } from "@/app/actions";
+import ConfirmationModal from "@/components/ConfirmationModal";
+import AdminSidebar from "./AdminSidebar";
 
 interface AdminDashboardProps {
     eventId: string;
@@ -17,13 +19,14 @@ interface AdminDashboardProps {
     songs: any[];
     tables: any[];
     galleryItems: any[];
-    event: any; // Add event details
+    event: any;
+    initialTab?: Tab;
 }
 
-type Tab = 'dashboard' | 'wishlist' | 'guests' | 'tables' | 'map' | 'gallery' | 'settings';
+type Tab = 'dashboard' | 'wishlist' | 'guests' | 'tables' | 'map' | 'gallery' | 'settings' | 'testing';
 
-export default function AdminDashboard({ eventId, userId, guests, items, songs, tables, galleryItems, event }: AdminDashboardProps) {
-    const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+export default function AdminDashboard({ eventId, userId, guests, items, songs, tables, galleryItems, event, initialTab = 'dashboard' }: AdminDashboardProps) {
+    const [activeTab, setActiveTab] = useState<Tab>(initialTab);
     const [editingGuest, setEditingGuest] = useState<any>(null);
     const [newTableName, setNewTableName] = useState("");
     const [newTableCapacity, setNewTableCapacity] = useState(8);
@@ -42,6 +45,26 @@ export default function AdminDashboard({ eventId, userId, guests, items, songs, 
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState<"ALL" | "ACCEPTED" | "DECLINED" | "PENDING">("ALL");
 
+    // Confirmation Modal State
+    const [confirmModal, setConfirmModal] = useState({
+        isOpen: false,
+        title: "",
+        message: "",
+        onConfirm: () => { }
+    });
+
+    const openConfirm = (title: string, message: string, onConfirm: () => void) => {
+        setConfirmModal({
+            isOpen: true,
+            title,
+            message,
+            onConfirm: () => {
+                onConfirm();
+                setConfirmModal(prev => ({ ...prev, isOpen: false }));
+            }
+        });
+    };
+
     useEffect(() => {
         setLocalTables(tables);
         const positions: any = {};
@@ -53,10 +76,14 @@ export default function AdminDashboard({ eventId, userId, guests, items, songs, 
     }, [tables]);
 
     const handleDeleteGuest = async (id: string, name: string) => {
-        if (confirm(`Er du sikker på at du vil slette "${name}"?`)) {
-            await deleteGuest(id);
-            if (editingGuest?.id === id) setEditingGuest(null);
-        }
+        openConfirm(
+            "Slett gjest",
+            `Er du sikker på at du vil slette "${name}"?`,
+            async () => {
+                await deleteGuest(id);
+                if (editingGuest?.id === id) setEditingGuest(null);
+            }
+        );
     };
 
     const handleCreateTable = async (e: React.FormEvent) => {
@@ -125,15 +152,23 @@ export default function AdminDashboard({ eventId, userId, guests, items, songs, 
         setNewTableCount(1);
     };
     const handleDeleteTable = async (id: string) => {
-        if (confirm("Er du sikker på at du vil slette dette bordet?")) {
-            await deleteTable(id);
-        }
+        openConfirm(
+            "Slett bord",
+            "Er du sikker på at du vil slette dette bordet?",
+            async () => {
+                await deleteTable(id);
+            }
+        );
     };
 
     const handleDeleteWishlist = async (id: string, title: string) => {
-        if (confirm(`Er du sikker på at du vil slette "${title}"?`)) {
-            await deleteWishlistItem(id);
-        }
+        openConfirm(
+            "Slett ønske",
+            `Er du sikker på at du vil slette "${title}"?`,
+            async () => {
+                await deleteWishlistItem(id);
+            }
+        );
     };
 
     const handleMouseDown = (e: React.MouseEvent, tableId: string) => {
@@ -187,72 +222,13 @@ export default function AdminDashboard({ eventId, userId, guests, items, songs, 
 
     return (
         <div className={styles.container}>
-            <aside className={styles.sidebar}>
-                <div className={styles.logo}>EventPlanner</div>
-                <div className={styles.switcherWrapper}>
-                    <EventSwitcher currentEventId={eventId} userId={userId} />
-                </div>
-                <nav className={styles.nav}>
-                    <button
-                        onClick={() => setActiveTab('dashboard')}
-                        className={`${styles.navItem} ${activeTab === 'dashboard' ? styles.active : ''}`}
-                    >
-                        <LayoutDashboard size={20} />
-                        <span>Dashboard</span>
-                    </button>
-                    {(!event.config || (event.config as any).wishlistEnabled !== false) && (
-                        <button
-                            onClick={() => setActiveTab('wishlist')}
-                            className={`${styles.navItem} ${activeTab === 'wishlist' ? styles.active : ''}`}
-                        >
-                            <Gift size={20} />
-                            <span>Ønskeliste</span>
-                        </button>
-                    )}
-                    <button
-                        onClick={() => setActiveTab('guests')}
-                        className={`${styles.navItem} ${activeTab === 'guests' ? styles.active : ''}`}
-                    >
-                        <Users size={20} />
-                        <span>Gjester</span>
-                    </button>
-                    <button
-                        onClick={() => window.location.href = `/admin/budget?eventId=${eventId}`}
-                        className={styles.navItem}
-                    >
-                        <Wallet size={20} />
-                        <span>Budsjett</span>
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('tables')}
-                        className={`${styles.navItem} ${activeTab === 'tables' ? styles.active : ''}`}
-                    >
-                        <Utensils size={20} />
-                        <span>Bordliste</span>
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('gallery')}
-                        className={`${styles.navItem} ${activeTab === 'gallery' ? styles.active : ''}`}
-                    >
-                        <Camera size={20} />
-                        <span>Galleri</span>
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('settings')}
-                        className={`${styles.navItem} ${activeTab === 'settings' ? styles.active : ''}`}
-                    >
-                        <Settings size={20} />
-                        <span>Innstillinger</span>
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('map')}
-                        className={`${styles.navItem} ${activeTab === 'map' ? styles.active : ''}`}
-                    >
-                        <LayoutDashboard size={20} />
-                        <span>Bordoversikt</span>
-                    </button>
-                </nav>
-            </aside>
+            <AdminSidebar
+                eventId={eventId}
+                userId={userId}
+                activeTab={activeTab}
+                onTabChange={(tab) => setActiveTab(tab as Tab)}
+                config={event.config}
+            />
 
             <main className={styles.main}>
                 {activeTab === 'dashboard' && (
@@ -462,7 +438,7 @@ export default function AdminDashboard({ eventId, userId, guests, items, songs, 
                                                 </div>
                                             </div>
                                             <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', padding: '4px', borderRadius: '8px' }}>
-                                                <button onClick={() => setStatusFilter("ALL")} style={{ padding: '0.5rem 1rem', borderRadius: '6px', border: 'none', background: statusFilter === 'ALL' ? 'var(--text-main)' : 'transparent', color: statusFilter === 'ALL' ? 'var(--bg-main)' : 'var(--text-muted)', cursor: 'pointer', fontWeight: 500 }}>Alle</button>
+                                                <button onClick={() => setStatusFilter("ALL")} style={{ padding: '0.5rem 1rem', borderRadius: '6px', border: 'none', background: statusFilter === 'ALL' ? 'var(--text-main)' : 'transparent', color: statusFilter === 'ALL' ? 'var(--bg-color)' : 'var(--text-muted)', cursor: 'pointer', fontWeight: 500 }}>Alle</button>
                                                 <button onClick={() => setStatusFilter("ACCEPTED")} style={{ padding: '0.5rem 1rem', borderRadius: '6px', border: 'none', background: statusFilter === 'ACCEPTED' ? 'var(--accent-green)' : 'transparent', color: statusFilter === 'ACCEPTED' ? '#fff' : 'var(--text-muted)', cursor: 'pointer', fontWeight: 500 }}>Kommer</button>
                                                 <button onClick={() => setStatusFilter("DECLINED")} style={{ padding: '0.5rem 1rem', borderRadius: '6px', border: 'none', background: statusFilter === 'DECLINED' ? '#e74c3c' : 'transparent', color: statusFilter === 'DECLINED' ? '#fff' : 'var(--text-muted)', cursor: 'pointer', fontWeight: 500 }}>Kan ikke</button>
                                                 <button onClick={() => setStatusFilter("PENDING")} style={{ padding: '0.5rem 1rem', borderRadius: '6px', border: 'none', background: statusFilter === 'PENDING' ? 'var(--accent-gold)' : 'transparent', color: statusFilter === 'PENDING' ? '#000' : 'var(--text-muted)', cursor: 'pointer', fontWeight: 500 }}>Uavklart</button>
@@ -566,11 +542,15 @@ export default function AdminDashboard({ eventId, userId, guests, items, songs, 
                                 {isSelectionMode && selectedTableIds.length > 0 && (
                                     <button
                                         onClick={async () => {
-                                            if (confirm(`Er du sikker på at du vil slette ${selectedTableIds.length} bord?`)) {
-                                                await deleteTables(selectedTableIds);
-                                                setSelectedTableIds([]);
-                                                setIsSelectionMode(false);
-                                            }
+                                            openConfirm(
+                                                "Slett bord",
+                                                `Er du sikker på at du vil slette ${selectedTableIds.length} bord?`,
+                                                async () => {
+                                                    await deleteTables(selectedTableIds);
+                                                    setSelectedTableIds([]);
+                                                    setIsSelectionMode(false);
+                                                }
+                                            );
                                         }}
                                         style={{ color: '#ff4444', background: 'rgba(255, 68, 68, 0.1)', border: 'none', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}
                                     >
@@ -888,7 +868,15 @@ export default function AdminDashboard({ eventId, userId, guests, items, songs, 
                                             type="text"
                                             defaultValue={event.name}
                                             className={styles.actualInput}
-                                            style={{ width: '100%', borderBottomColor: 'var(--glass-border)' }}
+                                            style={{
+                                                width: '100%',
+                                                borderBottomColor: 'var(--glass-border)',
+                                                background: 'rgba(255, 255, 255, 0.05)',
+                                                border: '1px solid var(--glass-border)',
+                                                borderRadius: '8px',
+                                                padding: '0.8rem',
+                                                color: 'var(--text-main)'
+                                            }}
                                             onBlur={(e) => updateEventSettings(eventId, { name: e.target.value })}
                                         />
                                     </div>
@@ -899,7 +887,15 @@ export default function AdminDashboard({ eventId, userId, guests, items, songs, 
                                             defaultValue={event.guestPassword || ""}
                                             placeholder="Ingen (åpent)"
                                             className={styles.actualInput}
-                                            style={{ width: '100%', borderBottomColor: 'var(--glass-border)' }}
+                                            style={{
+                                                width: '100%',
+                                                borderBottomColor: 'var(--glass-border)',
+                                                background: 'rgba(255, 255, 255, 0.05)',
+                                                border: '1px solid var(--glass-border)',
+                                                borderRadius: '8px',
+                                                padding: '0.8rem',
+                                                color: 'var(--text-main)'
+                                            }}
                                             onBlur={(e) => updateEventSettings(eventId, { guestPassword: e.target.value || null })}
                                         />
                                     </div>
@@ -907,7 +903,65 @@ export default function AdminDashboard({ eventId, userId, guests, items, songs, 
                             </div>
 
                             <div className={`${styles.tableCard} glass`}>
+                                <h3>Nettadresse & Domene</h3>
+                                <div className={styles.formGroup} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
+                                    <div>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Personlig slug (e.g. mitt-bryllup)</label>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <span style={{ fontSize: '0.8rem', opacity: 0.5 }}>/</span>
+                                            <input
+                                                type="text"
+                                                defaultValue={event.slug}
+                                                className={styles.actualInput}
+                                                style={{
+                                                    width: '100%',
+                                                    borderBottomColor: 'var(--glass-border)',
+                                                    background: 'rgba(255, 255, 255, 0.05)',
+                                                    border: '1px solid var(--glass-border)',
+                                                    borderRadius: '8px',
+                                                    padding: '0.8rem',
+                                                    color: 'var(--text-main)'
+                                                }}
+                                                onBlur={async (e) => {
+                                                    if (e.target.value === event.slug) return;
+                                                    const res = await updateEventSlugDomain(eventId, { slug: e.target.value });
+                                                    if (res.error) alert(res.error);
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Eget domene (e.g. www.vårtbryllup.no)</label>
+                                        <input
+                                            type="text"
+                                            defaultValue={event.customDomain || ""}
+                                            placeholder="Ingen (valgfritt)"
+                                            className={styles.actualInput}
+                                            style={{
+                                                width: '100%',
+                                                borderBottomColor: 'var(--glass-border)',
+                                                background: 'rgba(255, 255, 255, 0.05)',
+                                                border: '1px solid var(--glass-border)',
+                                                borderRadius: '8px',
+                                                padding: '0.8rem',
+                                                color: 'var(--text-main)'
+                                            }}
+                                            onBlur={async (e) => {
+                                                if (e.target.value === (event.customDomain || "")) return;
+                                                const res = await updateEventSlugDomain(eventId, { customDomain: e.target.value || null });
+                                                if (res.error) alert(res.error);
+                                            }}
+                                        />
+                                        <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>
+                                            Merk: Du må peke domenets DNS til vår server for at dette skal virke.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className={`${styles.tableCard} glass`}>
                                 <h3>Moduler</h3>
+
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         <span>Ønskeliste</span>
@@ -947,7 +1001,15 @@ export default function AdminDashboard({ eventId, userId, guests, items, songs, 
                                             type="email"
                                             placeholder="bruker@eksempel.no"
                                             className={styles.actualInput}
-                                            style={{ width: '100%', borderBottomColor: 'var(--glass-border)' }}
+                                            style={{
+                                                width: '100%',
+                                                borderBottomColor: 'var(--glass-border)',
+                                                background: 'rgba(255, 255, 255, 0.05)',
+                                                border: '1px solid var(--glass-border)',
+                                                borderRadius: '8px',
+                                                padding: '0.8rem',
+                                                color: 'var(--text-main)'
+                                            }}
                                             onKeyDown={async (e) => {
                                                 if (e.key === 'Enter') {
                                                     const res = await addAdminToEvent(eventId, (e.target as HTMLInputElement).value);
@@ -1114,7 +1176,113 @@ export default function AdminDashboard({ eventId, userId, guests, items, songs, 
                         </div>
                     </section>
                 )}
+
+                {activeTab === 'testing' && (
+                    <section className={styles.seating}>
+                        <header className={styles.header}>
+                            <h1>Testing & Design System</h1>
+                            <p style={{ color: 'var(--text-muted)' }}>Validate styling, fonts, and visibility across the application.</p>
+                        </header>
+
+                        <div className={styles.tableGrid}>
+                            {/* Text Visibility Test */}
+                            <div className={`${styles.tableCard} glass`}>
+                                <h3>Text Visibility (Contrast)</h3>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
+                                    <div style={{ padding: '1rem', background: 'var(--bg-color)', border: '1px solid var(--glass-border)', borderRadius: '8px' }}>
+                                        <p style={{ color: 'var(--text-main)' }}>Standard Text on Background</p>
+                                        <p style={{ color: 'var(--text-muted)' }}>Muted Text on Background</p>
+                                    </div>
+                                    <div style={{ padding: '1rem', background: 'var(--card-bg)', border: '1px solid var(--glass-border)', borderRadius: '8px' }}>
+                                        <p style={{ color: 'var(--text-main)' }}>Standard Text on Card (Glass)</p>
+                                        <p style={{ color: 'var(--text-muted)' }}>Muted Text on Card (Glass)</p>
+                                    </div>
+                                    <div style={{ padding: '1rem', background: 'var(--accent-gold)', borderRadius: '8px', color: 'white' }}>
+                                        <p>Text on Accent Color (Gold)</p>
+                                    </div>
+                                    <div style={{ padding: '1rem', background: 'var(--accent-green)', borderRadius: '8px', color: 'white' }}>
+                                        <p>Text on Accent Color (Green)</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Font Consistency Test */}
+                            <div className={`${styles.tableCard} glass`}>
+                                <h3>Typography & Fonts</h3>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
+                                    <div>
+                                        <h1>Heading 1 (Playfair Display)</h1>
+                                        <h2>Heading 2 (Playfair Display)</h2>
+                                        <h3>Heading 3 (Playfair Display)</h3>
+                                        <h4>Heading 4 (Playfair Display)</h4>
+                                    </div>
+                                    <hr style={{ borderColor: 'var(--glass-border)' }} />
+                                    <div>
+                                        <p style={{ marginBottom: '0.5rem' }}><strong>Body Text (Montserrat):</strong></p>
+                                        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
+                                    </div>
+                                    <div>
+                                        <p style={{ marginBottom: '0.5rem' }}><strong>Small Text / Muted:</strong></p>
+                                        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Dette er en liten tekst som brukes for metadata eller mindre viktig informasjon.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className={`${styles.tableCard} glass`}>
+                                <h3>Input Fields & Buttons</h3>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
+                                    <input
+                                        type="text"
+                                        placeholder="Standard Input"
+                                        className={styles.actualInput}
+                                        style={{
+                                            width: '100%',
+                                            borderBottomColor: 'var(--glass-border)',
+                                            background: 'rgba(255, 255, 255, 0.05)',
+                                            border: '1px solid var(--glass-border)',
+                                            borderRadius: '8px',
+                                            padding: '0.8rem',
+                                            color: 'var(--text-main)'
+                                        }}
+                                    />
+
+                                    <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '1rem' }}>
+                                        <div>
+                                            <p style={{ marginBottom: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Primary</p>
+                                            <button className="luxury-button">Luxury Button</button>
+                                        </div>
+
+                                        <div>
+                                            <p style={{ marginBottom: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Proposal 1: Outline</p>
+                                            <button className="luxury-button-outline">Secondary Outline</button>
+                                        </div>
+
+                                        <div>
+                                            <p style={{ marginBottom: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Proposal 2: Soft</p>
+                                            <button className="luxury-button-soft">Secondary Soft</button>
+                                        </div>
+
+                                        <div>
+                                            <p style={{ marginBottom: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Proposal 3: Ghost</p>
+                                            <button className="luxury-button-ghost">Secondary Ghost</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                )}
+
             </main>
+
+            <ConfirmationModal
+                isOpen={confirmModal.isOpen}
+                title={confirmModal.title}
+                message={confirmModal.message}
+                onConfirm={confirmModal.onConfirm}
+                onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                isDestructive={true}
+            />
         </div>
     );
 }

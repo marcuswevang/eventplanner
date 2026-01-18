@@ -1,37 +1,27 @@
 .container {
     display: flex;
     min-height: 100vh;
-    background-color: #f8f9fa;
-}
-
-@media (prefers-color-scheme: dark) {
-    .container {
-        background-color: #000;
-    }
+    background-color: var(--bg-color);
 }
 
 .sidebar {
     width: 260px;
-    background: white;
-    border-right: 1px solid #eee;
+    background: var(--card-bg);
+    border-right: 1px solid var(--glass-border);
     padding: 2rem;
     display: flex;
     flex-direction: column;
-}
-
-@media (prefers-color-scheme: dark) {
-    .sidebar {
-        background: #111;
-        border-color: #222;
-    }
+    backdrop-filter: blur(10px);
 }
 
 .logo {
-    font-family: var(--font-fancy);
+    display: none;
+    /* User requested removal */
+    /* font-family: var(--font-fancy);
     font-size: 1.5rem;
     font-weight: 700;
     margin-bottom: 1.5rem;
-    color: var(--accent-gold);
+    color: var(--accent-gold); */
 }
 
 .switcherWrapper {
@@ -44,6 +34,8 @@
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+    flex: 1;
+    /* Push bottom items to the end */
 }
 
 .navItem {
@@ -61,15 +53,25 @@
     text-align: left;
     font-size: 1rem;
     font-family: inherit;
+    justify-content: flex-start;
+    /* Default alignment */
+}
+
+/* Force icon visibility and size */
+.navItem svg {
+    stroke: currentColor;
+    stroke-width: 2px;
+    min-width: 20px;
+    min-height: 20px;
 }
 
 .navItem:hover {
-    background: #fcfaf7;
+    background: rgba(212, 175, 55, 0.1);
     color: var(--accent-gold);
 }
 
 .active {
-    background: #fcfaf7;
+    background: rgba(212, 175, 55, 0.1);
     color: var(--accent-gold);
     font-weight: 600;
 }

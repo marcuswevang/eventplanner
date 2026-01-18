@@ -32,6 +32,36 @@
     font-family: var(--font-fancy);
 }
 
+.goalInput {
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid var(--accent-gold-transparent);
+    color: var(--accent-gold);
+    font-size: 1.75rem;
+    font-weight: 700;
+    width: 100%;
+    font-family: var(--font-fancy);
+}
+
+.goalInput:focus {
+    outline: none;
+    border-bottom-color: var(--accent-gold);
+}
+
+.progressBar {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-top: 0.5rem;
+}
+
+.progressFill {
+    height: 100%;
+    transition: width 0.3s ease, background-color 0.3s ease;
+}
+
 .mainList {
     padding: 2rem;
 }
@@ -80,11 +110,45 @@
 
 .addForm input,
 .addForm select {
-    padding: 0.75rem;
-    background: var(--bg-main);
+    padding: 0.8rem 1.25rem;
+    background: rgba(255, 255, 255, 0.6);
     border: 1px solid var(--glass-border);
-    border-radius: 8px;
+    border-radius: 12px;
     color: var(--text-main);
+    font-size: 0.95rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(4px);
+    width: 100%;
+}
+
+[data-theme='dark'] .addForm input,
+[data-theme='dark'] .addForm select {
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.addForm input:hover,
+.addForm select:hover {
+    border-color: var(--accent-gold-soft);
+    background: rgba(255, 255, 255, 0.8);
+}
+
+[data-theme='dark'] .addForm input:hover,
+[data-theme='dark'] .addForm select:hover {
+    background: rgba(0, 0, 0, 0.4);
+}
+
+.addForm input:focus,
+.addForm select:focus {
+    outline: none;
+    border-color: var(--accent-gold);
+    background: #fff;
+    box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.15);
+    transform: translateY(-1px);
+}
+
+[data-theme='dark'] .addForm input:focus,
+[data-theme='dark'] .addForm select:focus {
+    background: #1a1a1a;
 }
 
 .addForm button {
@@ -92,64 +156,55 @@
     background: var(--accent-gold-transparent);
     color: var(--accent-gold);
     border: 1px solid var(--accent-gold);
-    border-radius: 8px;
+    border-radius: 24px;
     cursor: pointer;
 }
 
-.table {
+.editInput,
+.editSelect {
     width: 100%;
-}
-
-.tableHead {
-    display: grid;
-    grid-template-columns: 2fr 1.2fr 1fr 1fr 1fr 40px;
-    padding: 1rem;
-    border-bottom: 1px solid var(--glass-border);
-    color: var(--text-muted);
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
-.tableBody {
-    display: flex;
-    flex-direction: column;
-}
-
-.row {
-    display: grid;
-    grid-template-columns: 2fr 1.2fr 1fr 1fr 1fr 40px;
-    padding: 1.25rem 1rem;
-    align-items: center;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
-    transition: background 0.2s;
-}
-
-.row:hover {
-    background: rgba(255, 255, 255, 0.02);
-}
-
-.description {
-    font-weight: 500;
-}
-
-.category {
-    font-size: 0.85rem;
-    color: var(--text-muted);
-}
-
-.actualInput {
-    width: 100px;
-    padding: 0.4rem;
-    background: transparent;
-    border: 1px solid transparent;
+    padding: 0.5rem 1rem;
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
     color: var(--text-main);
-    border-bottom-color: var(--glass-border);
+    transition: all 0.2s;
 }
 
-.actualInput:focus {
+[data-theme='dark'] .editInput,
+[data-theme='dark'] .editSelect {
+    background: rgba(0, 0, 0, 0.4);
+}
+
+.editInput:focus,
+.editSelect:focus {
     outline: none;
-    border-color: var(--accent-gold-transparent);
+    border-color: var(--accent-gold);
+    box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.15);
+}
+
+.iconButton {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.iconButton:hover {
+    color: var(--accent-gold);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.actions {
+    display: flex;
+    gap: 0.25rem;
+    justify-content: flex-end;
 }
 
 .paidToggle {
@@ -177,9 +232,10 @@
 .deleteButton {
     background: none;
     border: none;
-    color: rgba(255, 68, 68, 0.5);
+    color: var(--text-muted);
     cursor: pointer;
     transition: color 0.2s;
+    padding: 4px;
 }
 
 .deleteButton:hover {
@@ -191,4 +247,170 @@
     text-align: center;
     color: var(--text-muted);
     font-style: italic;
+}
+
+.categoryList {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.categoryPill {
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    background: transparent;
+    border: 1px solid var(--glass-border);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.85rem;
+}
+
+.categoryPill:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-main);
+    border-color: var(--accent-gold-transparent);
+}
+
+.categoryPill.selected {
+    background: var(--accent-gold);
+    color: var(--bg-main);
+    border-color: var(--accent-gold);
+    font-weight: 600;
+}
+
+.addCategoryPill {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-style: dashed;
+}
+
+.customCategoryInputWrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+}
+
+.customCategoryInput {
+    flex: 1;
+    padding: 0.5rem 1rem;
+    background: var(--bg-main);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    color: var(--text-main);
+}
+
+.miniCategoryList {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+}
+
+.miniPill {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    background: transparent;
+    border: 1px solid var(--glass-border);
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 0.75rem;
+    transition: all 0.2s;
+}
+
+.miniPill:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--accent-gold-transparent);
+}
+
+.miniPill.selected {
+    background: var(--accent-gold-transparent);
+    color: var(--accent-gold);
+    border-color: var(--accent-gold);
+}
+
+.table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin-top: 1rem;
+}
+
+.tableHead th {
+    text-align: left;
+    padding: 1rem;
+    color: var(--text-muted);
+    border-bottom: 2px solid var(--glass-border);
+    font-size: 0.85rem;
+    font-weight: 600;
+    background: rgba(0, 0, 0, 0.02);
+}
+
+.tableBody tr {
+    transition: background 0.2s;
+}
+
+.tableBody tr:nth-child(even) {
+    background: rgba(0, 0, 0, 0.02);
+}
+
+.tableBody td {
+    padding: 1rem;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.row:hover {
+    background: rgba(0, 0, 0, 0.04) !important;
+}
+
+.description {
+    font-weight: 500;
+    color: var(--text-main);
+}
+
+.category {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.amount {
+    font-family: var(--font-fancy);
+    font-weight: 600;
+}
+
+.costContainer {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.quickInput {
+    background: rgba(255, 255, 255, 0.5);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    padding: 0.4rem 0.6rem;
+    color: var(--text-main);
+    width: 100px;
+    font-family: var(--font-fancy);
+    transition: all 0.2s;
+}
+
+.quickInput:hover,
+.quickInput:focus {
+    background: #fff;
+    border-color: var(--accent-gold);
+    box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.15);
+    outline: none;
+    width: 110px;
+    /* Subtle expansion */
+}
+
+[data-theme='dark'] .quickInput:hover,
+[data-theme='dark'] .quickInput:focus {
+    background: #1a1a1a;
 }

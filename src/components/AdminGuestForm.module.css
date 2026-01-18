@@ -33,31 +33,52 @@
 }
 
 .input {
-    padding: 0.8rem 1rem;
-    border-radius: 8px;
+    padding: 0.8rem 1.25rem;
+    border-radius: 12px;
     border: 1px solid var(--glass-border);
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.6);
     font-family: inherit;
     font-size: 1rem;
     color: var(--text-main);
-    transition: all 0.2s;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(4px);
     width: 100%;
+}
+
+[data-theme='dark'] .input {
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.input:hover {
+    border-color: var(--accent-gold-soft);
+    background: rgba(255, 255, 255, 0.8);
+}
+
+[data-theme='dark'] .input:hover {
+    background: rgba(0, 0, 0, 0.4);
 }
 
 .input:focus {
     outline: none;
     border-color: var(--accent-gold);
-    background: rgba(255, 255, 255, 0.15);
-    box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
+    background: #fff;
+    box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.15);
+    transform: translateY(-1px);
+}
+
+[data-theme='dark'] .input:focus {
+    background: #1a1a1a;
 }
 
 .input::placeholder {
-    color: rgba(255, 255, 255, 0.4);
+    color: var(--text-muted);
+    opacity: 0.7;
 }
 
 select.input option {
-    background: #222;
+    background: var(--bg-main);
     color: var(--text-main);
+    padding: 10px;
 }
 
 .quickTags {

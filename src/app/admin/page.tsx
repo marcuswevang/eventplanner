@@ -75,6 +75,17 @@ export default async function AdminPage({
         })
     ]);
 
+    if (!event) {
+        return <div style={{ padding: '2rem', textAlign: 'center' }}>Arrangement ikke muntet.</div>;
+    }
+
+    const isSuperAdmin = (session.user as any).role === "SUPER_ADMIN";
+    const isOwner = event.users.some(u => u.id === userId);
+
+    if (!isSuperAdmin && !isOwner) {
+        return <div style={{ padding: '2rem', textAlign: 'center', color: '#ff4444' }}>Du har ikke tilgang til dette arrangementet.</div>;
+    }
+
     return (
         <AdminDashboard
             eventId={eventId}
@@ -85,6 +96,7 @@ export default async function AdminPage({
             tables={tables}
             galleryItems={galleryItems}
             event={event}
+            initialTab={params.tab as any}
         />
     );
 }

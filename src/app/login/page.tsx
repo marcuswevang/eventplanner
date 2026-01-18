@@ -83,6 +83,9 @@ export default function LoginPage() {
                                 required
                             />
                         </div>
+                        <div style={{ textAlign: 'right', marginTop: '0.5rem' }}>
+                            <a href="/forgot-password" style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Glemt passord?</a>
+                        </div>
                     </div>
 
                     {error && <p className={styles.error}>{error}</p>}

@@ -24,7 +24,8 @@ export async function registerUser(email: string, password: string, name: string
                 email,
                 password: hashedPassword,
                 name,
-                role: "CUSTOMER"
+                role: "CUSTOMER",
+                isActivated: false
             }
         });
 
@@ -35,8 +36,136 @@ export async function registerUser(email: string, password: string, name: string
     }
 }
 
+export async function updateUserProfile(data: { name?: string, email?: string }) {
+    try {
+        const session = await auth();
+        if (!session?.user) return { error: "Ikke autorisert" };
+
+        const userId = (session.user as any).id;
+
+        await prisma.user.update({
+            where: { id: userId },
+            data: {
+                name: data.name,
+                email: data.email
+            }
+        });
+
+        revalidatePath("/settings");
+        revalidatePath("/admin");
+        return { success: true };
+    } catch (error: any) {
+        if (error.code === 'P2002') {
+            return { error: "E-postadressen er allerede i bruk." };
+        }
+        return { error: "Kunne ikke oppdatere profil." };
+    }
+}
+
+export async function updateUserPassword(data: { currentPassword?: string, newPassword?: string }) {
+    try {
+        const session = await auth();
+        if (!session?.user || !data.currentPassword || !data.newPassword) return { error: "Ugyldig forespørsel" };
+
+        const userId = (session.user as any).id;
+        const user = await prisma.user.findUnique({
+            where: { id: userId }
+        });
+
+        if (!user || !user.password) return { error: "Bruker ikke funnet" };
+
+        const isValid = await bcrypt.compare(data.currentPassword, user.password);
+        if (!isValid) return { error: "Nåværende passord er feil." };
+
+        const hashedPassword = await bcrypt.hash(data.newPassword, 10);
+        await prisma.user.update({
+            where: { id: userId },
+            data: { password: hashedPassword }
+        });
+
+        return { success: true };
+    } catch (error) {
+        return { error: "Kunne ikke oppdatere passord." };
+    }
+}
+
+export async function requestPasswordReset(email: string) {
+    try {
+        const user = await prisma.user.findUnique({
+            where: { email }
+        });
+
+        if (!user) {
+            // We return success even if user not found for security reasons
+            return { success: true };
+        }
+
+        const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        const expires = new Date(Date.now() + 3600000); // 1 hour
+
+        await prisma.passwordResetToken.create({
+            data: {
+                token,
+                expires,
+                userId: user.id
+            }
+        });
+
+        // In a real app, we would send an email here.
+        // For this demo/setup, we'll just log it or return it (though returning it is NOT secure, it's for the exercise)
+        console.log(`Password reset token for ${email}: ${token}`);
+        console.log(`Reset link: http://localhost:3000/reset-password?token=${token}`);
+
+        return { success: true };
+    } catch (error) {
+        console.error("Error requesting reset:", error);
+        return { error: "Kunne ikke be om passordgjenoppretting." };
+    }
+}
+
+export async function resetPassword(token: string, newPassword: string) {
+    try {
+        const resetToken = await prisma.passwordResetToken.findUnique({
+            where: { token },
+            include: { user: true }
+        });
+
+        if (!resetToken || resetToken.expires < new Date()) {
+            return { error: "Ugyldig eller utløpt kode." };
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        await prisma.$transaction([
+            prisma.user.update({
+                where: { id: resetToken.userId },
+                data: { password: hashedPassword }
+            }),
+            prisma.passwordResetToken.delete({
+                where: { id: resetToken.id }
+            })
+        ]);
+
+        return { success: true };
+    } catch (error) {
+        console.error("Error resetting password:", error);
+        return { error: "Kunne ikke nullstille passord." };
+    }
+}
+
 export async function getUserEvents(userId: string) {
     try {
+        const session = await auth();
+        if (!session?.user) return { error: "Ikke autorisert" };
+
+        const currentUserId = (session.user as any).id;
+        const currentUserRole = (session.user as any).role;
+
+        // Allow if asking for self OR if superadmin
+        if (userId !== currentUserId && currentUserRole !== "SUPER_ADMIN") {
+            return { error: "Ikke autorisert" };
+        }
+
         const events = await prisma.event.findMany({
             where: {
                 users: {
@@ -54,7 +183,14 @@ export async function getUserEvents(userId: string) {
 
 // --- Event & Settings Actions ---
 
-export async function createEvent(data: { name: string, type: "WEDDING" | "CHRISTENING" | "NAMING_CEREMONY" | "CONFIRMATION" | "JUBILEE" | "OTHER", date: Date, slug: string }) {
+export async function createEvent(data: {
+    name: string,
+    type: "WEDDING" | "CHRISTENING" | "NAMING_CEREMONY" | "CONFIRMATION" | "JUBILEE" | "OTHER",
+    date: Date,
+    slug: string,
+    config?: any,
+    initialGuests?: { name: string, role: string }[]
+}) {
     try {
         const session = await auth();
         if (!session?.user) {
@@ -69,11 +205,25 @@ export async function createEvent(data: { name: string, type: "WEDDING" | "CHRIS
                 type: data.type,
                 date: data.date,
                 slug: data.slug,
+                config: data.config || {},
                 users: {
                     connect: { id: userId }
                 }
             }
         });
+
+        if (data.initialGuests && data.initialGuests.length > 0) {
+            await prisma.guest.createMany({
+                data: data.initialGuests.map(guest => ({
+                    eventId: event.id,
+                    name: guest.name,
+                    role: guest.role,
+                    type: "DINNER", // Default to dinner guests for key roles
+                    rsvpStatus: "ACCEPTED"
+                }))
+            });
+        }
+
         revalidatePath("/admin");
         return { success: true, event };
     } catch (error) {
@@ -371,14 +521,15 @@ export async function updateTable(tableId: string, data: any) {
 
 // --- Budget Actions ---
 
-export async function createBudgetItem(eventId: string, description: string, category: string, estimatedCost: number) {
+export async function createBudgetItem(eventId: string, description: string, category: string, estimatedCost: number, isPaid: boolean = false) {
     try {
         await prisma.budgetItem.create({
             data: {
                 eventId,
                 description,
                 category,
-                estimatedCost
+                estimatedCost,
+                isPaid
             }
         });
         revalidatePath("/admin");
@@ -388,7 +539,7 @@ export async function createBudgetItem(eventId: string, description: string, cat
     }
 }
 
-export async function updateBudgetItem(itemId: string, data: { description?: string, estimatedCost?: number, actualCost?: number, isPaid?: boolean }) {
+export async function updateBudgetItem(itemId: string, data: { description?: string, category?: string, estimatedCost?: number, actualCost?: number | null, isPaid?: boolean }) {
     try {
         await prisma.budgetItem.update({
             where: { id: itemId },
@@ -481,14 +632,17 @@ export async function checkEventAuth(eventId: string) {
     return cookieStore.has(`event_auth_${eventId}`);
 }
 
-export async function updateEventSettings(eventId: string, data: { name?: string, date?: Date, guestPassword?: string | null, config?: any }) {
+export async function updateEventSettings(eventId: string, data: { name?: string, date?: Date, guestPassword?: string | null, budgetGoal?: number, config?: any }) {
     try {
         const session = await auth();
         if (!session?.user) return { error: "Ikke autorisert" };
 
         await prisma.event.update({
             where: { id: eventId },
-            data
+            data: {
+                ...data,
+                budgetGoal: (data as any).budgetGoal !== undefined ? Number((data as any).budgetGoal) : undefined
+            }
         });
         revalidatePath("/admin");
         revalidatePath("/");
@@ -537,5 +691,199 @@ export async function addAdminToEvent(eventId: string, email: string) {
         return { error: "Kunne ikke legge til administrator." };
     }
 }
+
+// --- Superadmin Actions ---
+
+export async function getAllEvents() {
+    try {
+        const session = await auth();
+        if ((session?.user as any)?.role !== "SUPER_ADMIN") {
+            return { error: "Kunne ikke hente arrangementer: Tilgang nektet." };
+        }
+
+        const events = await prisma.event.findMany({
+            include: {
+                users: {
+                    select: { email: true, name: true }
+                },
+                _count: {
+                    select: { guests: true }
+                }
+            },
+            orderBy: { createdAt: "desc" }
+        });
+        return { events };
+    } catch (error) {
+        console.error("Error fetching all events:", error);
+        return { error: "Kunne ikke hente arrangementer." };
+    }
+}
+
+export async function toggleEventStatus(eventId: string, isActive: boolean) {
+    try {
+        const session = await auth();
+        if ((session?.user as any)?.role !== "SUPER_ADMIN") {
+            return { error: "Ikke autorisert" };
+        }
+
+        await prisma.event.update({
+            where: { id: eventId },
+            data: { isActive }
+        });
+
+        revalidatePath("/superadmin");
+        revalidatePath("/");
+        return { success: true };
+    } catch (error) {
+        return { error: "Kunne ikke oppdatere status." };
+    }
+}
+
+export async function updateEventSlugDomain(eventId: string, data: { slug?: string, customDomain?: string | null }) {
+    try {
+        const session = await auth();
+        if (!session?.user) return { error: "Ikke autorisert" };
+
+        // Check if user is owner/admin of this event OR superadmin
+        const user = await prisma.user.findUnique({
+            where: { id: (session.user as any).id },
+            include: { events: { where: { id: eventId } } }
+        });
+
+        if (user?.role !== "SUPER_ADMIN" && user?.events.length === 0) {
+            return { error: "Du har ikke tilgang til å endre dette arrangementet." };
+        }
+
+        await prisma.event.update({
+            where: { id: eventId },
+            data
+        });
+
+        revalidatePath("/admin");
+        revalidatePath("/superadmin");
+        revalidatePath("/");
+        return { success: true };
+    } catch (error: any) {
+        if (error.code === 'P2002') {
+            return { error: "Nettadressen eller domenet er allerede i bruk." };
+        }
+        return { error: "Kunne ikke oppdatere innstillinger." };
+    }
+}
+
+export async function getPendingUsers() {
+    try {
+        const session = await auth();
+        if ((session?.user as any)?.role !== "SUPER_ADMIN") {
+            return { error: "Ikke autorisert" };
+        }
+
+        const users = await prisma.user.findMany({
+            where: { isActivated: false },
+            orderBy: { createdAt: "desc" }
+        });
+        return { users };
+    } catch (error) {
+        return { error: "Kunne ikke hente ventende brukere." };
+    }
+}
+
+export async function activateUser(userId: string) {
+    try {
+        const session = await auth();
+        if ((session?.user as any)?.role !== "SUPER_ADMIN") {
+            return { error: "Ikke autorisert" };
+        }
+
+        await prisma.user.update({
+            where: { id: userId },
+            data: { isActivated: true }
+        });
+
+        revalidatePath("/superadmin");
+        return { success: true };
+    } catch (error) {
+        return { error: "Kunne ikke aktivere bruker." };
+    }
+}
+
+export async function getAllUsers() {
+    try {
+        const session = await auth();
+        if ((session?.user as any)?.role !== "SUPER_ADMIN") {
+            return { error: "Ikke autorisert" };
+        }
+
+        const users = await prisma.user.findMany({
+            orderBy: { createdAt: "desc" },
+            include: {
+                events: {
+                    select: { name: true }
+                }
+            }
+        });
+        return { users };
+    } catch (error) {
+        return { error: "Kunne ikke hente brukere." };
+    }
+}
+
+export async function adminResetUserPassword(userId: string, newPassword: string) {
+    try {
+        const session = await auth();
+        if ((session?.user as any)?.role !== "SUPER_ADMIN") {
+            return { error: "Ikke autorisert" };
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        await prisma.user.update({
+            where: { id: userId },
+            data: { password: hashedPassword }
+        });
+
+        // Optional: Invalidate existing sessions if you want to force re-login
+        // But for now we just change the password.
+
+        return { success: true };
+    } catch (error) {
+        console.error("Error admin resetting password:", error);
+        return { error: "Kunne ikke nullstille passord." };
+    }
+}
+
+export async function setSuperAdmin(email: string) {
+    try {
+        await prisma.user.update({
+            where: { email },
+            data: {
+                role: "SUPER_ADMIN",
+                isActivated: true
+            }
+        });
+        return { success: true };
+    } catch (error) {
+        console.error("Error setting superadmin:", error);
+        return { error: "Kunne ikke sette superadmin." };
+    }
+}
+
+export async function adminPromoteToSuperAdmin(userId: string) {
+    try {
+        const session = await auth();
+        if ((session?.user as any)?.role !== "SUPER_ADMIN") {
+            return { error: "Ikke autorisert" };
+        }
+
+        await prisma.user.update({
+            where: { id: userId },
+            data: { role: "SUPER_ADMIN" }
+        });
+        return { success: true };
+    } catch (error) {
+        return { error: "Kunne ikke oppgradere bruker." };
+    }
+}
+
 
 

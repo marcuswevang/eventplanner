@@ -36,31 +36,42 @@
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    background: var(--bg-main);
-    border: 2px solid var(--glass-border);
+    background: var(--card-bg);
+    /* Use card background for better contrast */
+    border: 2px solid var(--text-muted);
+    /* Darker border for visibility */
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 600;
     color: var(--text-muted);
     transition: all 0.3s ease;
+    z-index: 2;
+    /* Ensure above line */
 }
 
 .stepIndicator.active .indicatorCircle {
+    background: var(--accent-gold);
     border-color: var(--accent-gold);
-    color: var(--accent-gold);
-    box-shadow: 0 0 15px var(--accent-gold-transparent);
+    color: white;
+    /* White text on gold background */
+    box-shadow: 0 0 15px rgba(212, 175, 55, 0.4);
+    transform: scale(1.1);
 }
 
 .indicatorLabel {
     font-size: 0.8rem;
-    font-weight: 500;
+    font-weight: 600;
+    /* Bolder text */
     color: var(--text-muted);
     text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .stepIndicator.active .indicatorLabel {
-    color: var(--text-main);
+    color: var(--accent-gold);
+    /* Gold text for active active */
 }
 
 .card {

@@ -3,8 +3,10 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
+import { authConfig } from "./auth.config";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+    ...authConfig,
     adapter: PrismaAdapter(prisma),
     providers: [
         Credentials({
@@ -28,6 +30,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 );
 
                 if (!isValid) return null;
+                if (!user.isActivated) {
+                    throw new Error("BRUKER_IKKE_AKTIVERT");
+                }
 
                 return {
                     id: user.id,
@@ -38,23 +43,5 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             },
         }),
     ],
-    callbacks: {
-        async jwt({ token, user }) {
-            if (user) {
-                token.role = (user as any).role;
-            }
-            return token;
-        },
-        async session({ session, token }) {
-            if (session.user) {
-                (session.user as any).role = token.role;
-                (session.user as any).id = token.sub;
-            }
-            return session;
-        },
-    },
-    session: { strategy: "jwt" },
-    pages: {
-        signIn: "/login",
-    },
 });
+

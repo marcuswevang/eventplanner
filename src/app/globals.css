@@ -24,14 +24,12 @@
   --radius-lg: 12px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg-color: #121212;
-    --text-main: #fcfaf7;
-    --text-muted: #a0a0a0;
-    --card-bg: rgba(30, 30, 30, 0.8);
-    --glass-border: rgba(212, 175, 55, 0.3);
-  }
+[data-theme='dark'] {
+  --bg-color: #121212;
+  --text-main: #fcfaf7;
+  --text-muted: #a0a0a0;
+  --card-bg: rgba(30, 30, 30, 0.8);
+  --glass-border: rgba(212, 175, 55, 0.3);
 }
 
 * {
@@ -102,4 +100,61 @@ a {
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(212, 175, 55, 0.4);
   background: var(--accent-gold-soft);
+}
+
+/* Secondary Button - Outline Gold */
+.luxury-button-outline {
+  background: transparent;
+  color: var(--accent-gold);
+  padding: 0.8rem 2rem;
+  border-radius: 30px;
+  border: 1px solid var(--accent-gold);
+  font-family: var(--font-serif);
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(4px);
+}
+
+.luxury-button-outline:hover {
+  transform: translateY(-2px);
+  background: rgba(212, 175, 55, 0.1);
+  box-shadow: 0 4px 15px rgba(212, 175, 55, 0.1);
+}
+
+/* Secondary Button - Soft Gold Background */
+.luxury-button-soft {
+  background: rgba(212, 175, 55, 0.15);
+  color: var(--accent-gold);
+  padding: 0.8rem 2rem;
+  border-radius: 30px;
+  border: 1px solid rgba(212, 175, 55, 0.1);
+  font-family: var(--font-serif);
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.luxury-button-soft:hover {
+  transform: translateY(-2px);
+  background: rgba(212, 175, 55, 0.25);
+  border-color: var(--accent-gold);
+}
+
+/* Ghost Button - Text Only/Minimal */
+.luxury-button-ghost {
+  background: transparent;
+  color: var(--text-muted);
+  padding: 0.8rem 2rem;
+  border-radius: 30px;
+  border: 1px solid transparent;
+  font-family: var(--font-serif);
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.luxury-button-ghost:hover {
+  color: var(--accent-gold);
+  background: rgba(0, 0, 0, 0.03);
 }
