@@ -259,7 +259,7 @@ export default function AdminDashboard({ eventId, guests, items, songs, tables }
                         <header className={styles.header}>
                             <h1>Administrer Ønskeliste</h1>
                         </header>
-                        <AdminWishlistForm />
+                        <AdminWishlistForm eventId={eventId} />
 
                         <div style={{ marginTop: '3rem' }}>
                             <h2 style={{ marginBottom: '1.5rem' }}>Registrerte Ønsker</h2>
@@ -368,7 +368,7 @@ export default function AdminDashboard({ eventId, guests, items, songs, tables }
                                         </button>
                                         <button
                                             onClick={async () => {
-                                                const res = await importGuests(importData);
+                                                const res = await importGuests(eventId, importData);
                                                 if (res.error) alert(res.error);
                                                 else {
                                                     alert(`Importerte ${res.count} gjester!`);
@@ -396,6 +396,7 @@ export default function AdminDashboard({ eventId, guests, items, songs, tables }
                         <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
                             <div style={{ flex: '0 0 320px' }}>
                                 <AdminGuestForm
+                                    eventId={eventId}
                                     initialData={editingGuest}
                                     tables={tables}
                                     guests={guests}
