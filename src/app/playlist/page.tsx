@@ -1,8 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import styles from "./playlist.module.css";
 import Link from "next/link";
-import { ChevronLeft, Music, PlusCircle } from "lucide-react";
+import { ChevronLeft, Music } from "lucide-react";
 import PlaylistClient from "./PlaylistClient";
+import { getEventTerm } from "@/lib/terminology";
+
+export const dynamic = 'force-dynamic';
 
 export default async function PlaylistPage() {
     const event = await prisma.event.findFirst();
@@ -10,6 +13,8 @@ export default async function PlaylistPage() {
     if (!event) {
         return <div>Ingen spilleliste funnet.</div>;
     }
+
+    const term = getEventTerm(event.type);
 
     const requests = await prisma.songRequest.findMany({
         where: { eventId: event.id },
@@ -30,7 +35,7 @@ export default async function PlaylistPage() {
                     <div className={styles.iconWrapper}>
                         <Music size={40} className={styles.mainIcon} />
                     </div>
-                    <h1 className="title-gradient">Bryllups-spillelisten</h1>
+                    <h1 className="title-gradient">{term}-spillelisten</h1>
                     <p className={styles.intro}>
                         Hvilken sang vil få deg ut på dansegulvet?
                         Legg til dine ønsker her så tar vi dem med til DJ-en!

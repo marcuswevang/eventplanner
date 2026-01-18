@@ -3,6 +3,9 @@ import styles from "./wishlist.module.css";
 import Link from "next/link";
 import { ChevronLeft, Gift, CheckCircle2 } from "lucide-react";
 import WishlistClient from "./WishlistClient";
+import { getEventTerm } from "@/lib/terminology";
+
+export const dynamic = 'force-dynamic';
 
 export default async function WishlistPage() {
     const event = await prisma.event.findFirst();
@@ -10,6 +13,8 @@ export default async function WishlistPage() {
     if (!event) {
         return <div>Ingen ønskeliste funnet.</div>;
     }
+
+    const term = getEventTerm(event.type);
 
     const items = await prisma.wishlistItem.findMany({
         where: { eventId: event.id },
@@ -30,7 +35,7 @@ export default async function WishlistPage() {
                     <div className={styles.iconWrapper}>
                         <Gift size={40} className={styles.mainIcon} />
                     </div>
-                    <h1 className="title-gradient">Vår Ønskeliste</h1>
+                    <h1 className="title-gradient">{term}-ønskeliste</h1>
                     <p className={styles.intro}>
                         Her er en oversikt over ting vi ønsker oss til vårt nye hjem.
                         Hvis du kjøper noe, vennligst marker det her slik at andre ser at det er kjøpt.

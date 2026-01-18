@@ -1,41 +1,90 @@
 import { prisma } from "@/lib/prisma";
 import AdminDashboard from "@/components/AdminDashboard";
+import { auth } from "@/auth";
+import { redirect } from "next/navigation";
+import Link from "next/link";
 
 export const dynamic = 'force-dynamic';
 
-export default async function AdminPage() {
-    // For now, get the first event found in the DB
-    // In a future step, this will be based on user session/event switcher
-    const event = await prisma.event.findFirst();
+export default async function AdminPage({
+    searchParams
+}: {
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+}) {
+    const session = await auth();
+    const params = await searchParams;
 
-    if (!event) {
-        return <div>Ingen arrangementer funnet. Vennligst opprett et arrangement først.</div>;
+    if (!session?.user) {
+        redirect("/login");
     }
 
-    const [guests, items, songs, tables] = await Promise.all([
+    const userId = (session.user as any).id;
+    let eventId = params.eventId as string;
+
+    // If no eventId is provided, get the first event the user is admin of
+    if (!eventId) {
+        const firstEvent = await prisma.event.findFirst({
+            where: {
+                users: { some: { id: userId } }
+            }
+        });
+
+        if (firstEvent) {
+            eventId = firstEvent.id;
+        }
+    }
+
+    if (!eventId) {
+        return (
+            <div style={{ padding: '2rem', textAlign: 'center' }}>
+                <h1 className="title-gradient">Velkommen til EventPlanner</h1>
+                <p>Du har ingen arrangementer ennå.</p>
+                <Link
+                    href="/admin/new"
+                    className="luxury-button"
+                    style={{ marginTop: '1.5rem', display: 'inline-block', textDecoration: 'none' }}
+                >
+                    Opprett ditt første arrangement
+                </Link>
+            </div>
+        );
+    }
+
+    const [guests, items, songs, tables, galleryItems, event] = await Promise.all([
         prisma.guest.findMany({
-            where: { eventId: event.id },
+            where: { eventId },
             include: { table: true, partner: true }
         }),
         prisma.wishlistItem.findMany({
-            where: { eventId: event.id }
+            where: { eventId }
         }),
         prisma.songRequest.findMany({
-            where: { eventId: event.id }
+            where: { eventId }
         }),
         prisma.table.findMany({
-            where: { eventId: event.id },
+            where: { eventId },
             include: { guests: true }
         }),
+        prisma.galleryItem.findMany({
+            where: { eventId },
+            orderBy: { createdAt: "desc" }
+        }),
+        prisma.event.findUnique({
+            where: { id: eventId },
+            include: { users: true }
+        })
     ]);
 
     return (
         <AdminDashboard
-            eventId={event.id}
+            eventId={eventId}
+            userId={userId}
             guests={guests}
             items={items}
             songs={songs}
             tables={tables}
+            galleryItems={galleryItems}
+            event={event}
         />
     );
 }

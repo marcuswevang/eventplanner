@@ -10,11 +10,11 @@ interface TimeLeft {
     seconds: number;
 }
 
-export default function Countdown() {
+export default function Countdown({ targetDate: propTargetDate }: { targetDate?: Date | string | null }) {
     const [timeLeft, setTimeLeft] = useState<TimeLeft | null>(null);
 
     useEffect(() => {
-        const targetDate = new Date('2026-08-15T15:00:00');
+        const targetDate = propTargetDate ? new Date(propTargetDate) : new Date('2026-08-15T15:00:00');
 
         const calculateTimeLeft = () => {
             const now = new Date();

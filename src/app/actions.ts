@@ -2,23 +2,83 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import bcrypt from "bcryptjs";
+import { auth } from "@/auth";
+
+// --- Auth Actions ---
+
+export async function registerUser(email: string, password: string, name: string) {
+    try {
+        const existingUser = await prisma.user.findUnique({
+            where: { email }
+        });
+
+        if (existingUser) {
+            return { error: "En bruker med denne e-postadressen eksisterer allerede." };
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        const user = await prisma.user.create({
+            data: {
+                email,
+                password: hashedPassword,
+                name,
+                role: "CUSTOMER"
+            }
+        });
+
+        return { success: true, userId: user.id };
+    } catch (error) {
+        console.error("Error registering user:", error);
+        return { error: "Kunne ikke registrere bruker." };
+    }
+}
+
+export async function getUserEvents(userId: string) {
+    try {
+        const events = await prisma.event.findMany({
+            where: {
+                users: {
+                    some: { id: userId }
+                }
+            },
+            orderBy: { date: "asc" }
+        });
+        return { events };
+    } catch (error) {
+        console.error("Error fetching user events:", error);
+        return { error: "Kunne ikke hente dine arrangementer." };
+    }
+}
 
 // --- Event & Settings Actions ---
 
 export async function createEvent(data: { name: string, type: "WEDDING" | "CHRISTENING" | "NAMING_CEREMONY" | "CONFIRMATION" | "JUBILEE" | "OTHER", date: Date, slug: string }) {
     try {
+        const session = await auth();
+        if (!session?.user) {
+            return { error: "Du må være logget inn for å opprette et arrangement." };
+        }
+
+        const userId = (session.user as any).id;
+
         const event = await prisma.event.create({
             data: {
                 name: data.name,
                 type: data.type,
                 date: data.date,
-                slug: data.slug
+                slug: data.slug,
+                users: {
+                    connect: { id: userId }
+                }
             }
         });
+        revalidatePath("/admin");
         return { success: true, event };
     } catch (error) {
         console.error("Error creating event:", error);
-        return { error: "Kunne ikke opprette arrangement." };
+        return { error: "Kunne ikke opprette arrangement. Kanskje nettadressen allerede er i bruk?" };
     }
 }
 
@@ -341,6 +401,103 @@ export async function updateBudgetItem(itemId: string, data: { description?: str
     }
 }
 
+// --- Gallery Actions ---
+
+export async function addGalleryItem(eventId: string, url: string, caption: string = "", source: "UPLOAD" | "INSTAGRAM" = "UPLOAD", externalId: string | null = null) {
+    try {
+        const item = await prisma.galleryItem.create({
+            data: {
+                eventId,
+                url,
+                caption,
+                source,
+                externalId
+            }
+        });
+        revalidatePath("/gallery");
+        revalidatePath("/admin/gallery");
+        return { success: true, item };
+    } catch (error) {
+        console.error("Error adding gallery item:", error);
+        return { error: "Kunne ikke legge til bilde." };
+    }
+}
+
+export async function deleteGalleryItem(itemId: string) {
+    try {
+        await prisma.galleryItem.delete({
+            where: { id: itemId }
+        });
+        revalidatePath("/gallery");
+        revalidatePath("/admin/gallery");
+        return { success: true };
+    } catch (error) {
+        console.error("Error deleting gallery item:", error);
+        return { error: "Kunne ikke slette bilde." };
+    }
+}
+
+import { cookies } from "next/headers";
+
+// --- Protection Actions ---
+
+export async function verifyEventPassword(eventId: string, password: string) {
+    try {
+        const event = await prisma.event.findUnique({
+            where: { id: eventId },
+            select: { guestPassword: true }
+        });
+
+        if (!event || !event.guestPassword) {
+            return { success: true }; // No password needed
+        }
+
+        if (event.guestPassword === password) {
+            const cookieStore = await cookies();
+            cookieStore.set(`event_auth_${eventId}`, "true", {
+                maxAge: 60 * 60 * 24 * 7, // 1 week
+                httpOnly: true,
+                secure: process.env.NODE_ENV === "production",
+                sameSite: "lax"
+            });
+            return { success: true };
+        }
+
+        return { error: "Feil passord." };
+    } catch (error) {
+        return { error: "Noe gikk galt." };
+    }
+}
+
+export async function checkEventAuth(eventId: string) {
+    const event = await prisma.event.findUnique({
+        where: { id: eventId },
+        select: { guestPassword: true }
+    });
+
+    if (!event || !event.guestPassword) return true;
+
+    const cookieStore = await cookies();
+    return cookieStore.has(`event_auth_${eventId}`);
+}
+
+export async function updateEventSettings(eventId: string, data: { name?: string, date?: Date, guestPassword?: string | null, config?: any }) {
+    try {
+        const session = await auth();
+        if (!session?.user) return { error: "Ikke autorisert" };
+
+        await prisma.event.update({
+            where: { id: eventId },
+            data
+        });
+        revalidatePath("/admin");
+        revalidatePath("/");
+        return { success: true };
+    } catch (error) {
+        return { error: "Kunne ikke oppdatere innstillinger." };
+    }
+}
+
 export async function deleteBudgetItem(itemId: string) {
     try {
         await prisma.budgetItem.delete({ where: { id: itemId } });
@@ -350,3 +507,35 @@ export async function deleteBudgetItem(itemId: string) {
         return { error: "Kunne ikke slette budsjettpost." };
     }
 }
+
+export async function addAdminToEvent(eventId: string, email: string) {
+    try {
+        const adminSession = await auth();
+        if (!adminSession?.user) return { error: "Ikke autorisert" };
+
+        const userToAdd = await prisma.user.findUnique({
+            where: { email }
+        });
+
+        if (!userToAdd) {
+            return { error: "Fant ingen bruker med denne e-postadressen." };
+        }
+
+        await prisma.event.update({
+            where: { id: eventId },
+            data: {
+                users: {
+                    connect: { id: userToAdd.id }
+                }
+            }
+        });
+
+        revalidatePath("/admin");
+        return { success: true };
+    } catch (error) {
+        console.error("Error adding admin:", error);
+        return { error: "Kunne ikke legge til administrator." };
+    }
+}
+
+

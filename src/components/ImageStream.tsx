@@ -9,7 +9,7 @@ const images = [
     '/bakgrunnsbilde.jpg'
 ];
 
-export default function ImageStream() {
+export default function ImageStream({ eventId, hashtag = "#eventplanner" }: { eventId?: string; hashtag?: string }) {
     const [currentIndex, setCurrentIndex] = useState(0);
 
     useEffect(() => {
@@ -33,7 +33,7 @@ export default function ImageStream() {
                 <div className={styles.hashtagContent}>
                     <Instagram size={48} className={styles.icon} />
                     <h2>Del deres øyeblikk</h2>
-                    <p className={styles.hashtag}>#mpw2026</p>
+                    <p className={styles.hashtag}>{hashtag}</p>
                     <p className={styles.info}>Bruk emneknaggen på Instagram</p>
                 </div>
             </div>

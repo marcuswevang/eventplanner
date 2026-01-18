@@ -1,0 +1,194 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.overview {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+}
+
+.card {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.cardHeader {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.cardValue {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--accent-gold);
+    font-family: var(--font-fancy);
+}
+
+.mainList {
+    padding: 2rem;
+}
+
+.listHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.listHeader h2 {
+    font-family: var(--font-fancy);
+    font-size: 1.5rem;
+}
+
+.addButton {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1.25rem;
+    background: var(--accent-gold);
+    border: none;
+    border-radius: 8px;
+    color: var(--bg-main);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.addButton:hover {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+}
+
+.addForm {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr auto;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px dashed var(--glass-border);
+    border-radius: 12px;
+}
+
+.addForm input,
+.addForm select {
+    padding: 0.75rem;
+    background: var(--bg-main);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    color: var(--text-main);
+}
+
+.addForm button {
+    padding: 0.75rem 1.5rem;
+    background: var(--accent-gold-transparent);
+    color: var(--accent-gold);
+    border: 1px solid var(--accent-gold);
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.table {
+    width: 100%;
+}
+
+.tableHead {
+    display: grid;
+    grid-template-columns: 2fr 1.2fr 1fr 1fr 1fr 40px;
+    padding: 1rem;
+    border-bottom: 1px solid var(--glass-border);
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.tableBody {
+    display: flex;
+    flex-direction: column;
+}
+
+.row {
+    display: grid;
+    grid-template-columns: 2fr 1.2fr 1fr 1fr 1fr 40px;
+    padding: 1.25rem 1rem;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    transition: background 0.2s;
+}
+
+.row:hover {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.description {
+    font-weight: 500;
+}
+
+.category {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.actualInput {
+    width: 100px;
+    padding: 0.4rem;
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-main);
+    border-bottom-color: var(--glass-border);
+}
+
+.actualInput:focus {
+    outline: none;
+    border-color: var(--accent-gold-transparent);
+}
+
+.paidToggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    width: fit-content;
+}
+
+.paidToggle.isPaid {
+    color: var(--accent-green);
+}
+
+.circle {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid var(--text-muted);
+}
+
+.deleteButton {
+    background: none;
+    border: none;
+    color: rgba(255, 68, 68, 0.5);
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.deleteButton:hover {
+    color: #ff4444;
+}
+
+.empty {
+    padding: 3rem;
+    text-align: center;
+    color: var(--text-muted);
+    font-style: italic;
+}

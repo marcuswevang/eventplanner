@@ -1,23 +1,28 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import EventSwitcher from "./EventSwitcher";
 import styles from "@/app/admin/admin.module.css";
-import { Users, LayoutDashboard, Utensils, Gift, Trash2, Martini, Pencil, WheatOff, MilkOff, Vegan, EggOff, PlusCircle, Circle, Square, RectangleHorizontal, Check, X, StretchHorizontal, CheckSquare, Lock, Unlock, FileUp } from "lucide-react";
+import { Users, LayoutDashboard, Utensils, Gift, Trash2, Martini, Pencil, WheatOff, MilkOff, Vegan, EggOff, PlusCircle, Circle, Square, RectangleHorizontal, Check, X, StretchHorizontal, CheckSquare, Lock, Unlock, FileUp, Wallet, Camera, Settings } from "lucide-react";
 import AdminWishlistForm from "@/components/AdminWishlistForm";
 import AdminGuestForm from "@/components/AdminGuestForm";
-import { deleteGuest, deleteWishlistItem, createTable, deleteTable, updateTable, batchCreateTables, deleteTables, importGuests } from "@/app/actions";
+import GalleryUploader from "@/components/GalleryUploader";
+import { deleteGuest, deleteWishlistItem, createTable, deleteTable, updateTable, batchCreateTables, deleteTables, importGuests, deleteGalleryItem, updateEventSettings, addAdminToEvent } from "@/app/actions";
 
 interface AdminDashboardProps {
     eventId: string;
+    userId: string;
     guests: any[];
     items: any[];
     songs: any[];
     tables: any[];
+    galleryItems: any[];
+    event: any; // Add event details
 }
 
-type Tab = 'dashboard' | 'wishlist' | 'guests' | 'tables' | 'map';
+type Tab = 'dashboard' | 'wishlist' | 'guests' | 'tables' | 'map' | 'gallery' | 'settings';
 
-export default function AdminDashboard({ eventId, guests, items, songs, tables }: AdminDashboardProps) {
+export default function AdminDashboard({ eventId, userId, guests, items, songs, tables, galleryItems, event }: AdminDashboardProps) {
     const [activeTab, setActiveTab] = useState<Tab>('dashboard');
     const [editingGuest, setEditingGuest] = useState<any>(null);
     const [newTableName, setNewTableName] = useState("");
@@ -183,7 +188,10 @@ export default function AdminDashboard({ eventId, guests, items, songs, tables }
     return (
         <div className={styles.container}>
             <aside className={styles.sidebar}>
-                <div className={styles.logo}>Admin-konsoll</div>
+                <div className={styles.logo}>EventPlanner</div>
+                <div className={styles.switcherWrapper}>
+                    <EventSwitcher currentEventId={eventId} userId={userId} />
+                </div>
                 <nav className={styles.nav}>
                     <button
                         onClick={() => setActiveTab('dashboard')}
@@ -192,13 +200,15 @@ export default function AdminDashboard({ eventId, guests, items, songs, tables }
                         <LayoutDashboard size={20} />
                         <span>Dashboard</span>
                     </button>
-                    <button
-                        onClick={() => setActiveTab('wishlist')}
-                        className={`${styles.navItem} ${activeTab === 'wishlist' ? styles.active : ''}`}
-                    >
-                        <Gift size={20} />
-                        <span>Ønskeliste</span>
-                    </button>
+                    {(!event.config || (event.config as any).wishlistEnabled !== false) && (
+                        <button
+                            onClick={() => setActiveTab('wishlist')}
+                            className={`${styles.navItem} ${activeTab === 'wishlist' ? styles.active : ''}`}
+                        >
+                            <Gift size={20} />
+                            <span>Ønskeliste</span>
+                        </button>
+                    )}
                     <button
                         onClick={() => setActiveTab('guests')}
                         className={`${styles.navItem} ${activeTab === 'guests' ? styles.active : ''}`}
@@ -207,11 +217,32 @@ export default function AdminDashboard({ eventId, guests, items, songs, tables }
                         <span>Gjester</span>
                     </button>
                     <button
+                        onClick={() => window.location.href = `/admin/budget?eventId=${eventId}`}
+                        className={styles.navItem}
+                    >
+                        <Wallet size={20} />
+                        <span>Budsjett</span>
+                    </button>
+                    <button
                         onClick={() => setActiveTab('tables')}
                         className={`${styles.navItem} ${activeTab === 'tables' ? styles.active : ''}`}
                     >
                         <Utensils size={20} />
                         <span>Bordliste</span>
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('gallery')}
+                        className={`${styles.navItem} ${activeTab === 'gallery' ? styles.active : ''}`}
+                    >
+                        <Camera size={20} />
+                        <span>Galleri</span>
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('settings')}
+                        className={`${styles.navItem} ${activeTab === 'settings' ? styles.active : ''}`}
+                    >
+                        <Settings size={20} />
+                        <span>Innstillinger</span>
                     </button>
                     <button
                         onClick={() => setActiveTab('map')}
@@ -794,6 +825,140 @@ export default function AdminDashboard({ eventId, guests, items, songs, tables }
                                     </div>
                                 ))
                             )}
+                        </div>
+                    </section>
+                )}
+
+                {activeTab === 'gallery' && (
+                    <section className={styles.seating}>
+                        <header className={styles.header}>
+                            <h1>Galleri & Media</h1>
+                        </header>
+
+                        <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
+                            <div style={{ flex: '0 0 320px' }}>
+                                <GalleryUploader eventId={eventId} />
+                            </div>
+                            <div className={styles.tableGrid} style={{ flex: 1 }}>
+                                {galleryItems.length === 0 ? (
+                                    <p className={styles.empty}>Ingen bilder i galleriet ennå.</p>
+                                ) : (
+                                    galleryItems.map((item: any) => (
+                                        <div key={item.id} className={`${styles.tableCard} glass`} style={{ position: 'relative', padding: 0, overflow: 'hidden' }}>
+                                            <img
+                                                src={item.url}
+                                                alt={item.caption || ""}
+                                                style={{ width: '100%', height: '180px', objectFit: 'cover' }}
+                                            />
+                                            <div style={{ padding: '1rem' }}>
+                                                <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-main)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                    <span>{item.source}</span>
+                                                    <button
+                                                        onClick={() => {
+                                                            if (confirm("Slett bilde?")) deleteGalleryItem(item.id);
+                                                        }}
+                                                        style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer' }}
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </p>
+                                                {item.caption && <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>{item.caption}</p>}
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    </section>
+                )}
+
+                {activeTab === 'settings' && (
+                    <section className={styles.seating}>
+                        <header className={styles.header}>
+                            <h1>Arrangementsinnstillinger</h1>
+                        </header>
+
+                        <div className={styles.tableGrid}>
+                            <div className={`${styles.tableCard} glass`}>
+                                <h3>Generelt</h3>
+                                <div className={styles.formGroup} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
+                                    <div>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Navn</label>
+                                        <input
+                                            type="text"
+                                            defaultValue={event.name}
+                                            className={styles.actualInput}
+                                            style={{ width: '100%', borderBottomColor: 'var(--glass-border)' }}
+                                            onBlur={(e) => updateEventSettings(eventId, { name: e.target.value })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Gjestepassord</label>
+                                        <input
+                                            type="text"
+                                            defaultValue={event.guestPassword || ""}
+                                            placeholder="Ingen (åpent)"
+                                            className={styles.actualInput}
+                                            style={{ width: '100%', borderBottomColor: 'var(--glass-border)' }}
+                                            onBlur={(e) => updateEventSettings(eventId, { guestPassword: e.target.value || null })}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className={`${styles.tableCard} glass`}>
+                                <h3>Moduler</h3>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <span>Ønskeliste</span>
+                                        <button
+                                            onClick={() => updateEventSettings(eventId, { config: { ...(event.config || {}), wishlistEnabled: !(event.config?.wishlistEnabled !== false) } })}
+                                            className={styles.miniButton}
+                                            style={{ background: (event.config?.wishlistEnabled !== false) ? 'var(--accent-gold)' : 'var(--glass-bg)' }}
+                                        >
+                                            {(event.config?.wishlistEnabled !== false) ? "Aktiv" : "Deaktivert"}
+                                        </button>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <span>Budsjett</span>
+                                        <button
+                                            onClick={() => updateEventSettings(eventId, { config: { ...(event.config || {}), budgetEnabled: !(event.config?.budgetEnabled !== false) } })}
+                                            className={styles.miniButton}
+                                            style={{ background: (event.config?.budgetEnabled !== false) ? 'var(--accent-gold)' : 'var(--glass-bg)' }}
+                                        >
+                                            {(event.config?.budgetEnabled !== false) ? "Aktiv" : "Deaktivert"}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className={`${styles.tableCard} glass`}>
+                                <h3>Administratorer</h3>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1rem' }}>
+                                    {event.users?.map((u: any) => (
+                                        <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
+                                            <span>{u.name || u.email}</span>
+                                            {u.id !== userId && <button style={{ background: 'none', border: 'none', color: '#ff4444', fontSize: '0.7rem' }}>Fjern</button>}
+                                        </div>
+                                    ))}
+                                    <div style={{ marginTop: '1rem', borderTop: '1px solid var(--glass-border)', paddingTop: '1rem' }}>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Legg til administrator (e-post)</label>
+                                        <input
+                                            type="email"
+                                            placeholder="bruker@eksempel.no"
+                                            className={styles.actualInput}
+                                            style={{ width: '100%', borderBottomColor: 'var(--glass-border)' }}
+                                            onKeyDown={async (e) => {
+                                                if (e.key === 'Enter') {
+                                                    const res = await addAdminToEvent(eventId, (e.target as HTMLInputElement).value);
+                                                    if (res.error) alert(res.error);
+                                                    else (e.target as HTMLInputElement).value = "";
+                                                }
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </section>
                 )}
