@@ -189,32 +189,18 @@ export default function SuperadminDashboard({ initialEvents, initialPendingUsers
                                         </div>
                                     </td>
                                     <td style={{ padding: "1rem" }}>
-                                        <span style={{
-                                            padding: "4px 8px",
-                                            borderRadius: "4px",
-                                            fontSize: "0.75rem",
-                                            fontWeight: 600,
-                                            background: event.isActive ? "rgba(46, 204, 113, 0.2)" : "rgba(231, 76, 60, 0.2)",
-                                            color: event.isActive ? "#2ecc71" : "#e74c3c"
-                                        }}>
-                                            {event.isActive ? "Aktiv" : "Deaktivert"}
-                                        </span>
-                                    </td>
-                                    <td style={{ padding: "1rem" }}>
                                         <button
                                             onClick={() => handleToggleStatus(event.id, event.isActive)}
+                                            className={event.isActive ? "luxury-button-outline" : "luxury-button-soft"}
                                             style={{
-                                                padding: "6px 12px",
-                                                borderRadius: "6px",
-                                                border: "1px solid",
-                                                borderColor: event.isActive ? "#e74c3c" : "#2ecc71",
-                                                background: "transparent",
-                                                color: event.isActive ? "#e74c3c" : "#2ecc71",
-                                                cursor: "pointer",
+                                                padding: "0.5rem 1rem",
                                                 fontSize: "0.85rem",
                                                 display: "flex",
                                                 alignItems: "center",
-                                                gap: "4px"
+                                                gap: "6px",
+                                                borderColor: event.isActive ? "#e74c3c" : "var(--accent-gold)",
+                                                color: event.isActive ? "#e74c3c" : "var(--accent-gold)",
+                                                background: event.isActive ? "rgba(231, 76, 60, 0.1)" : "rgba(212, 175, 55, 0.1)"
                                             }}
                                         >
                                             {event.isActive ? <X size={14} /> : <Check size={14} />}
@@ -223,17 +209,15 @@ export default function SuperadminDashboard({ initialEvents, initialPendingUsers
 
                                         <Link
                                             href={`/admin?eventId=${event.id}`}
+                                            className="luxury-button-secondary"
                                             style={{
-                                                padding: "6px 12px",
-                                                borderRadius: "6px",
-                                                border: "1px solid var(--glass-border)",
-                                                background: "rgba(255, 255, 255, 0.05)",
-                                                color: "var(--text-main)",
-                                                textDecoration: "none",
+                                                marginTop: "0.5rem",
+                                                padding: "0.5rem 1rem",
                                                 fontSize: "0.85rem",
+                                                textDecoration: "none",
                                                 display: "flex",
                                                 alignItems: "center",
-                                                gap: "4px"
+                                                gap: "6px"
                                             }}
                                         >
                                             <ArrowRightCircle size={14} />
@@ -272,20 +256,13 @@ export default function SuperadminDashboard({ initialEvents, initialPendingUsers
                                         <td style={{ padding: "1rem" }}>
                                             <button
                                                 onClick={() => handleActivateUser(user.id)}
+                                                className="luxury-button"
                                                 style={{
-                                                    padding: "6px 12px",
-                                                    borderRadius: "6px",
-                                                    border: "1px solid var(--accent-gold)",
-                                                    background: "transparent",
-                                                    color: "var(--accent-gold)",
-                                                    cursor: "pointer",
-                                                    fontSize: "0.85rem",
-                                                    display: "flex",
-                                                    alignItems: "center",
-                                                    gap: "4px"
+                                                    padding: "0.5rem 1rem",
+                                                    fontSize: "0.85rem"
                                                 }}
                                             >
-                                                <UserPlus size={14} />
+                                                <UserPlus size={14} style={{ marginRight: '6px' }} />
                                                 Aktiver bruker
                                             </button>
                                         </td>
@@ -334,84 +311,60 @@ export default function SuperadminDashboard({ initialEvents, initialPendingUsers
                                                     onChange={(e) => setNewPassword(e.target.value)}
                                                     placeholder="Nytt passord"
                                                     style={{
-                                                        padding: "4px 8px",
-                                                        borderRadius: "4px",
+                                                        padding: "0.4rem 0.8rem",
+                                                        borderRadius: "8px",
                                                         border: "1px solid var(--glass-border)",
                                                         background: "rgba(255, 255, 255, 0.1)",
                                                         color: "white",
-                                                        width: "120px"
+                                                        width: "140px"
                                                     }}
                                                 />
                                                 <button
                                                     onClick={() => handleResetPassword(user.id)}
-                                                    style={{
-                                                        padding: "4px 8px",
-                                                        borderRadius: "4px",
-                                                        background: "var(--accent-gold)",
-                                                        color: "black",
-                                                        border: "none",
-                                                        cursor: "pointer"
-                                                    }}
-                                                    title="Lagre passord"
+                                                    className="luxury-button"
+                                                    style={{ padding: "0.4rem 0.8rem" }}
+                                                    title="Lagre"
                                                 >
                                                     <Save size={14} />
                                                 </button>
                                                 <button
                                                     onClick={() => { setResetPasswordId(null); setNewPassword(""); }}
-                                                    style={{
-                                                        padding: "4px 8px",
-                                                        borderRadius: "4px",
-                                                        background: "rgba(255, 255, 255, 0.1)",
-                                                        color: "white",
-                                                        border: "none",
-                                                        cursor: "pointer"
-                                                    }}
+                                                    className="luxury-button-ghost"
+                                                    style={{ padding: "0.4rem 0.8rem", color: "#e74c3c" }}
                                                     title="Avbryt"
                                                 >
                                                     <X size={14} />
                                                 </button>
                                             </div>
                                         ) : (
-                                            <button
-                                                onClick={() => { setResetPasswordId(user.id); setNewPassword(""); }}
-                                                style={{
-                                                    padding: "6px 12px",
-                                                    borderRadius: "6px",
-                                                    border: "1px solid rgba(255, 255, 255, 0.2)",
-                                                    background: "transparent",
-                                                    color: "var(--text-muted)",
-                                                    cursor: "pointer",
-                                                    fontSize: "0.85rem",
-                                                    display: "flex",
-                                                    alignItems: "center",
-                                                    gap: "4px"
-                                                }}
-                                            >
-                                                <KeyRound size={14} />
-                                                Nullstill passord
-                                            </button>
-                                        )}
+                                            <div style={{ display: 'flex', gap: '8px' }}>
+                                                <button
+                                                    onClick={() => { setResetPasswordId(user.id); setNewPassword(""); }}
+                                                    className="luxury-button-ghost"
+                                                    style={{
+                                                        padding: "0.5rem 1rem",
+                                                        fontSize: "0.85rem"
+                                                    }}
+                                                >
+                                                    <KeyRound size={14} style={{ marginRight: '4px' }} />
+                                                    Nullstill
+                                                </button>
 
-                                        {user.role !== "SUPER_ADMIN" && (
-                                            <button
-                                                onClick={() => handlePromoteUser(user.id)}
-                                                style={{
-                                                    padding: "6px 12px",
-                                                    borderRadius: "6px",
-                                                    border: "1px solid var(--accent-gold)",
-                                                    background: "rgba(212, 175, 55, 0.1)",
-                                                    color: "var(--accent-gold)",
-                                                    cursor: "pointer",
-                                                    fontSize: "0.85rem",
-                                                    display: "flex",
-                                                    alignItems: "center",
-                                                    gap: "4px"
-                                                }}
-                                                title="Gjør til Superadmin"
-                                            >
-                                                <ShieldAlert size={14} />
-                                                Promoter
-                                            </button>
+                                                {user.role !== "SUPER_ADMIN" && (
+                                                    <button
+                                                        onClick={() => handlePromoteUser(user.id)}
+                                                        className="luxury-button-outline"
+                                                        style={{
+                                                            padding: "0.5rem 1rem",
+                                                            fontSize: "0.85rem"
+                                                        }}
+                                                        title="Gjør til Superadmin"
+                                                    >
+                                                        <ShieldAlert size={14} style={{ marginRight: '4px' }} />
+                                                        Promoter
+                                                    </button>
+                                                )}
+                                            </div>
                                         )}
                                     </td>
                                 </tr>
@@ -426,24 +379,33 @@ export default function SuperadminDashboard({ initialEvents, initialPendingUsers
                     background: var(--accent-gold);
                     color: black;
                     border: none;
-                    padding: 0.5rem 1rem;
-                    border-radius: 6px;
+                    padding: 0.8rem 1.5rem;
+                    border-radius: 30px; /* Pillow shape for luxury feel */
                     cursor: pointer;
                     font-weight: 600;
+                    font-family: var(--font-serif);
+                    transition: all 0.3s ease;
+                    box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
                 }
                 .inactive-tab {
-                    background: rgba(255, 255, 255, 0.05);
+                    background: transparent;
                     color: var(--text-muted);
                     border: 1px solid var(--glass-border);
-                    padding: 0.5rem 1rem;
-                    border-radius: 6px;
+                    padding: 0.8rem 1.5rem;
+                    border-radius: 30px;
                     cursor: pointer;
+                    transition: all 0.3s ease;
+                }
+                .inactive-tab:hover {
+                    border-color: var(--accent-gold);
+                    color: var(--text-main);
                 }
 
                 .sexy-input {
                     padding: 0.8rem 1rem 0.8rem 2.5rem;
-                    border-radius: 12px;
+                    border-radius: 30px; /* Consistent rounded stats */
                     border: 1px solid var(--glass-border);
+        
                     background: rgba(255, 255, 255, 0.6);
                     color: var(--text-main);
                     width: 300px;

@@ -29,6 +29,9 @@ export default function AdminSidebar({
 
     // Helper to check if a feature is enabled (default to true if config is empty/undefined for backward compat)
     const isEnabled = (key: string) => {
+        // If no event ID is present, hiding event-specific modules (for profile view etc)
+        if (!eventId) return false;
+
         if (!config || Object.keys(config).length === 0) return true;
         return config[key] === true;
     };
@@ -41,40 +44,31 @@ export default function AdminSidebar({
         }
     };
 
-    const NavItem = ({ id, icon: Icon, label, href, isAction = false }: any) => {
-        // Special case for Budget which is always a separate page for now
-        if (id === 'budget' && !href) href = `/admin/budget?eventId=${eventId}`;
-
-        // Determine if active
+    const NavItem = ({ id, icon: Icon, label, href }: { id: string, icon: any, label: string, href?: string }) => {
         const isActive = activeTab === id;
 
-        // If we have an onTabChange, we prefer clicking to switch tabs, UNLESS it's a separate page (Budget, Settings/Profile)
-        const isExternal = id === 'budget' || id === 'profile';
+        // Use href if provided, otherwise default to query param logic
+        // If eventId matches "undefined" string or is empty, use empty string
+        const safeEventId = eventId && eventId !== "undefined" ? eventId : "";
 
-        const handleClick = (e: React.MouseEvent) => {
-            if (!isExternal && onTabChange) {
-                e.preventDefault();
-                onTabChange(id);
-            }
-            // If external, let the Link or window.location handle it
-        };
+        const finalHref = href || (safeEventId ? `/admin?eventId=${safeEventId}&tab=${id}` : "#");
 
-        const content = (
-            <>
-                <Icon size={20} style={{ minWidth: '20px' }} />
-                {!isCollapsed && <span>{label}</span>}
-            </>
-        );
-
-        const commonStyle = {
+        const commonStyle: React.CSSProperties = {
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
             justifyContent: isCollapsed ? 'center' : 'flex-start',
-            padding: isCollapsed ? '0.8rem 0' : '0.8rem 1rem'
+            gap: '1rem',
+            padding: '0.8rem 1rem',
+            borderRadius: '12px',
+            color: isActive ? 'var(--accent-gold)' : 'var(--text-muted)',
+            background: isActive ? 'var(--glass-bg)' : 'transparent',
+            textDecoration: 'none',
+            transition: 'all 0.2s',
+            border: isActive ? '1px solid var(--accent-gold)' : '1px solid transparent',
         };
 
-        if (isExternal || !onTabChange) {
-            // Use Link for external or if no callback provided
-            // For dashboard links when on Budget page, we want them to go to /admin?eventId=...&tab=...
-            const finalHref = href || `/admin?eventId=${eventId}&tab=${id}`;
+        if (href || !onTabChange) {
             return (
                 <Link
                     href={finalHref}
@@ -82,19 +76,21 @@ export default function AdminSidebar({
                     title={isCollapsed ? label : ""}
                     style={commonStyle}
                 >
-                    {content}
+                    <Icon size={20} />
+                    {!isCollapsed && <span style={{ fontWeight: isActive ? 600 : 400 }}>{label}</span>}
                 </Link>
             );
         }
 
         return (
             <button
-                onClick={handleClick}
+                onClick={() => onTabChange ? onTabChange(id) : window.location.href = finalHref}
                 className={`${styles.navItem} ${isActive ? styles.active : ''}`}
                 title={isCollapsed ? label : ""}
                 style={commonStyle}
             >
-                {content}
+                <Icon size={20} />
+                {!isCollapsed && <span style={{ fontWeight: isActive ? 600 : 400 }}>{label}</span>}
             </button>
         );
     };
@@ -109,7 +105,7 @@ export default function AdminSidebar({
             )}
 
             <nav className={styles.nav}>
-                <NavItem id="dashboard" icon={LayoutDashboard} label="Dashboard" />
+                <NavItem id="dashboard" icon={LayoutDashboard} label="Dashboard" href={eventId ? `/admin?eventId=${eventId}` : '/admin'} />
 
                 {isEnabled('wishlistEnabled') && (
                     <NavItem id="wishlist" icon={Gift} label="Ønskeliste" />
@@ -136,13 +132,13 @@ export default function AdminSidebar({
 
                 <NavItem id="settings" icon={Settings} label="Innstillinger" />
 
-                {showTesting && (
+                {showTesting && isEnabled('testingEnabled') && (
                     <NavItem id="testing" icon={FlaskConical} label="Testing" />
                 )}
 
                 <div style={{ flexGrow: 1 }} />
 
-                <NavItem id="profile" icon={User} label="Min Profil" href="/settings" />
+                <NavItem id="profile" icon={User} label="Min Profil" href={eventId ? `/admin/profile?eventId=${eventId}` : "/admin/profile"} />
 
                 <button
                     onClick={() => setIsCollapsed(!isCollapsed)}

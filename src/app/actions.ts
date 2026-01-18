@@ -667,12 +667,27 @@ export async function addAdminToEvent(eventId: string, email: string) {
         const adminSession = await auth();
         if (!adminSession?.user) return { error: "Ikke autorisert" };
 
-        const userToAdd = await prisma.user.findUnique({
+        let userToAdd = await prisma.user.findUnique({
             where: { email }
         });
 
+        let tempPassword = null;
+
         if (!userToAdd) {
-            return { error: "Fant ingen bruker med denne e-postadressen." };
+            // Generate random password
+            tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
+            const hashedPassword = await bcrypt.hash(tempPassword, 10);
+
+            // Create the new user
+            userToAdd = await prisma.user.create({
+                data: {
+                    email,
+                    name: email.split('@')[0], // Default name
+                    password: hashedPassword,
+                    role: "CUSTOMER", // Default role
+                    isActivated: true // Auto-activate invited admins? Or maybe keep false until they verify? Let's use true for now as they are invited by existing admin.
+                }
+            });
         }
 
         await prisma.event.update({
@@ -685,7 +700,12 @@ export async function addAdminToEvent(eventId: string, email: string) {
         });
 
         revalidatePath("/admin");
-        return { success: true };
+
+        if (tempPassword) {
+            return { success: true, message: `Bruker opprettet! Midlertidig passord: ${tempPassword}` };
+        }
+
+        return { success: true, message: "Administrator lagt til." };
     } catch (error) {
         console.error("Error adding admin:", error);
         return { error: "Kunne ikke legge til administrator." };

@@ -50,9 +50,9 @@ export default function EventSwitcher({
                 onClick={() => setIsOpen(!isOpen)}
             >
                 <div className={styles.currentInfo}>
-                    <span className={styles.eventName}>{currentEvent?.name || "Laster..."}</span>
+                    <span className={styles.eventName}>{currentEvent?.name || "Velg arrangement"}</span>
                     <span className={styles.eventDetails}>
-                        {currentEvent?.date ? new Date(currentEvent.date).toLocaleDateString() : "Ingen dato"}
+                        {currentEvent?.date ? new Date(currentEvent.date).toLocaleDateString() : ""}
                     </span>
                 </div>
                 <ChevronDown size={16} className={`${styles.chevron} ${isOpen ? styles.open : ""}`} />

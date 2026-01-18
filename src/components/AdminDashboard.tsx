@@ -9,6 +9,7 @@ import AdminGuestForm from "@/components/AdminGuestForm";
 import GalleryUploader from "@/components/GalleryUploader";
 import { deleteGuest, deleteWishlistItem, createTable, deleteTable, updateTable, batchCreateTables, deleteTables, importGuests, deleteGalleryItem, updateEventSettings, addAdminToEvent, updateEventSlugDomain } from "@/app/actions";
 import ConfirmationModal from "@/components/ConfirmationModal";
+import Modal from "@/components/Modal";
 import AdminSidebar from "./AdminSidebar";
 
 interface AdminDashboardProps {
@@ -44,6 +45,11 @@ export default function AdminDashboard({ eventId, userId, guests, items, songs, 
     const [importData, setImportData] = useState("");
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState<"ALL" | "ACCEPTED" | "DECLINED" | "PENDING">("ALL");
+
+    // Admin Management State
+    const [isAddAdminModalOpen, setIsAddAdminModalOpen] = useState(false);
+    const [viewingAdmin, setViewingAdmin] = useState<any>(null);
+    const [tempPasswordMessage, setTempPasswordMessage] = useState<string | null>(null);
 
     // Confirmation Modal State
     const [confirmModal, setConfirmModal] = useState({
@@ -863,39 +869,21 @@ export default function AdminDashboard({ eventId, userId, guests, items, songs, 
                                 <h3>Generelt</h3>
                                 <div className={styles.formGroup} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
                                     <div>
-                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Navn</label>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'block' }}>Navn</label>
                                         <input
                                             type="text"
                                             defaultValue={event.name}
-                                            className={styles.actualInput}
-                                            style={{
-                                                width: '100%',
-                                                borderBottomColor: 'var(--glass-border)',
-                                                background: 'rgba(255, 255, 255, 0.05)',
-                                                border: '1px solid var(--glass-border)',
-                                                borderRadius: '8px',
-                                                padding: '0.8rem',
-                                                color: 'var(--text-main)'
-                                            }}
+                                            className="sexy-input"
                                             onBlur={(e) => updateEventSettings(eventId, { name: e.target.value })}
                                         />
                                     </div>
                                     <div>
-                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Gjestepassord</label>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'block' }}>Gjestepassord</label>
                                         <input
                                             type="text"
                                             defaultValue={event.guestPassword || ""}
                                             placeholder="Ingen (åpent)"
-                                            className={styles.actualInput}
-                                            style={{
-                                                width: '100%',
-                                                borderBottomColor: 'var(--glass-border)',
-                                                background: 'rgba(255, 255, 255, 0.05)',
-                                                border: '1px solid var(--glass-border)',
-                                                borderRadius: '8px',
-                                                padding: '0.8rem',
-                                                color: 'var(--text-main)'
-                                            }}
+                                            className="sexy-input"
                                             onBlur={(e) => updateEventSettings(eventId, { guestPassword: e.target.value || null })}
                                         />
                                     </div>
@@ -906,22 +894,13 @@ export default function AdminDashboard({ eventId, userId, guests, items, songs, 
                                 <h3>Nettadresse & Domene</h3>
                                 <div className={styles.formGroup} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
                                     <div>
-                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Personlig slug (e.g. mitt-bryllup)</label>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'block' }}>Personlig slug (e.g. mitt-bryllup)</label>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                             <span style={{ fontSize: '0.8rem', opacity: 0.5 }}>/</span>
                                             <input
                                                 type="text"
                                                 defaultValue={event.slug}
-                                                className={styles.actualInput}
-                                                style={{
-                                                    width: '100%',
-                                                    borderBottomColor: 'var(--glass-border)',
-                                                    background: 'rgba(255, 255, 255, 0.05)',
-                                                    border: '1px solid var(--glass-border)',
-                                                    borderRadius: '8px',
-                                                    padding: '0.8rem',
-                                                    color: 'var(--text-main)'
-                                                }}
+                                                className="sexy-input"
                                                 onBlur={async (e) => {
                                                     if (e.target.value === event.slug) return;
                                                     const res = await updateEventSlugDomain(eventId, { slug: e.target.value });
@@ -931,21 +910,12 @@ export default function AdminDashboard({ eventId, userId, guests, items, songs, 
                                         </div>
                                     </div>
                                     <div>
-                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Eget domene (e.g. www.vårtbryllup.no)</label>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'block' }}>Eget domene (e.g. www.vårtbryllup.no)</label>
                                         <input
                                             type="text"
                                             defaultValue={event.customDomain || ""}
                                             placeholder="Ingen (valgfritt)"
-                                            className={styles.actualInput}
-                                            style={{
-                                                width: '100%',
-                                                borderBottomColor: 'var(--glass-border)',
-                                                background: 'rgba(255, 255, 255, 0.05)',
-                                                border: '1px solid var(--glass-border)',
-                                                borderRadius: '8px',
-                                                padding: '0.8rem',
-                                                color: 'var(--text-main)'
-                                            }}
+                                            className="sexy-input"
                                             onBlur={async (e) => {
                                                 if (e.target.value === (event.customDomain || "")) return;
                                                 const res = await updateEventSlugDomain(eventId, { customDomain: e.target.value || null });
@@ -964,11 +934,28 @@ export default function AdminDashboard({ eventId, userId, guests, items, songs, 
 
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <span>Gjesteliste</span>
+                                        <button
+                                            onClick={() => updateEventSettings(eventId, { config: { ...(event.config || {}), guestsEnabled: !(event.config?.guestsEnabled !== false) } })}
+                                            className={event.config?.guestsEnabled !== false ? "luxury-button-soft" : "luxury-button-ghost"}
+                                        >
+                                            {(event.config?.guestsEnabled !== false) ? "Aktiv" : "Deaktivert"}
+                                        </button>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <span>Bordplassering</span>
+                                        <button
+                                            onClick={() => updateEventSettings(eventId, { config: { ...(event.config || {}), seatingEnabled: !(event.config?.seatingEnabled !== false) } })}
+                                            className={event.config?.seatingEnabled !== false ? "luxury-button-soft" : "luxury-button-ghost"}
+                                        >
+                                            {(event.config?.seatingEnabled !== false) ? "Aktiv" : "Deaktivert"}
+                                        </button>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         <span>Ønskeliste</span>
                                         <button
                                             onClick={() => updateEventSettings(eventId, { config: { ...(event.config || {}), wishlistEnabled: !(event.config?.wishlistEnabled !== false) } })}
-                                            className={styles.miniButton}
-                                            style={{ background: (event.config?.wishlistEnabled !== false) ? 'var(--accent-gold)' : 'var(--glass-bg)' }}
+                                            className={event.config?.wishlistEnabled !== false ? "luxury-button-soft" : "luxury-button-ghost"}
                                         >
                                             {(event.config?.wishlistEnabled !== false) ? "Aktiv" : "Deaktivert"}
                                         </button>
@@ -977,10 +964,18 @@ export default function AdminDashboard({ eventId, userId, guests, items, songs, 
                                         <span>Budsjett</span>
                                         <button
                                             onClick={() => updateEventSettings(eventId, { config: { ...(event.config || {}), budgetEnabled: !(event.config?.budgetEnabled !== false) } })}
-                                            className={styles.miniButton}
-                                            style={{ background: (event.config?.budgetEnabled !== false) ? 'var(--accent-gold)' : 'var(--glass-bg)' }}
+                                            className={event.config?.budgetEnabled !== false ? "luxury-button-soft" : "luxury-button-ghost"}
                                         >
                                             {(event.config?.budgetEnabled !== false) ? "Aktiv" : "Deaktivert"}
+                                        </button>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <span>Galleri</span>
+                                        <button
+                                            onClick={() => updateEventSettings(eventId, { config: { ...(event.config || {}), galleryEnabled: !(event.config?.galleryEnabled !== false) } })}
+                                            className={event.config?.galleryEnabled !== false ? "luxury-button-soft" : "luxury-button-ghost"}
+                                        >
+                                            {(event.config?.galleryEnabled !== false) ? "Aktiv" : "Deaktivert"}
                                         </button>
                                     </div>
                                 </div>
@@ -990,34 +985,74 @@ export default function AdminDashboard({ eventId, userId, guests, items, songs, 
                                 <h3>Administratorer</h3>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1rem' }}>
                                     {event.users?.map((u: any) => (
-                                        <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
-                                            <span>{u.name || u.email}</span>
-                                            {u.id !== userId && <button style={{ background: 'none', border: 'none', color: '#ff4444', fontSize: '0.7rem' }}>Fjern</button>}
+                                        <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', padding: '0.5rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px' }}>
+                                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                    <User size={16} color="var(--accent-gold)" />
+                                                    {u.name ? `${u.name} (${u.email})` : u.email}
+                                                </span>
+                                                <span style={{ fontSize: '0.75rem', color: u.isActivated ? 'var(--accent-green)' : 'var(--text-muted)', marginLeft: '1.5rem' }}>
+                                                    {u.isActivated ? "Aktiv" : "Ikke aktivert"}
+                                                </span>
+                                            </div>
+                                            {u.id !== userId && (
+                                                <button
+                                                    className="luxury-button-ghost"
+                                                    style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem', color: '#ff4444' }}
+                                                >
+                                                    Fjern
+                                                </button>
+                                            )}
                                         </div>
                                     ))}
                                     <div style={{ marginTop: '1rem', borderTop: '1px solid var(--glass-border)', paddingTop: '1rem' }}>
-                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Legg til administrator (e-post)</label>
-                                        <input
-                                            type="email"
-                                            placeholder="bruker@eksempel.no"
-                                            className={styles.actualInput}
-                                            style={{
-                                                width: '100%',
-                                                borderBottomColor: 'var(--glass-border)',
-                                                background: 'rgba(255, 255, 255, 0.05)',
-                                                border: '1px solid var(--glass-border)',
-                                                borderRadius: '8px',
-                                                padding: '0.8rem',
-                                                color: 'var(--text-main)'
-                                            }}
-                                            onKeyDown={async (e) => {
-                                                if (e.key === 'Enter') {
-                                                    const res = await addAdminToEvent(eventId, (e.target as HTMLInputElement).value);
-                                                    if (res.error) alert(res.error);
-                                                    else (e.target as HTMLInputElement).value = "";
-                                                }
-                                            }}
-                                        />
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'block' }}>Legg til administrator</label>
+                                        <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'column' }}>
+                                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                <input
+                                                    type="text"
+                                                    placeholder="Navn"
+                                                    className="sexy-input"
+                                                    id="newAdminName"
+                                                    style={{ flex: 1 }}
+                                                />
+                                                <input
+                                                    type="email"
+                                                    placeholder="E-post"
+                                                    className="sexy-input"
+                                                    id="newAdminEmail"
+                                                    style={{ flex: 2 }}
+                                                />
+                                            </div>
+                                            <button
+                                                className="luxury-button"
+                                                style={{ alignSelf: 'flex-start' }}
+                                                onClick={async () => {
+                                                    const emailInput = document.getElementById('newAdminEmail') as HTMLInputElement;
+                                                    const nameInput = document.getElementById('newAdminName') as HTMLInputElement;
+
+                                                    if (!emailInput.value) {
+                                                        alert("Må ha e-post");
+                                                        return;
+                                                    }
+
+                                                    const res = await addAdminToEvent(eventId, emailInput.value, nameInput.value);
+
+                                                    if (res.error) {
+                                                        alert(res.error);
+                                                    } else {
+                                                        alert(res.message || "Administrator lagt til!");
+                                                        emailInput.value = "";
+                                                        nameInput.value = "";
+                                                    }
+                                                }}
+                                            >
+                                                Legg til
+                                            </button>
+                                        </div>
+                                        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+                                            Hvis brukeren ikke finnes, opprettes en ny konto med et generert passord som vises her.
+                                        </p>
                                     </div>
                                 </div>
                             </div>
