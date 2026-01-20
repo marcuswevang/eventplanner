@@ -1,0 +1,442 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.overview {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.5rem;
+}
+
+@media (max-width: 600px) {
+    .overview {
+        grid-template-columns: 1fr;
+    }
+}
+
+.card {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.cardHeader {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.cardValue {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--accent-gold);
+    font-family: var(--font-fancy);
+}
+
+.goalInput {
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid var(--accent-gold-transparent);
+    color: var(--accent-gold);
+    font-size: 1.75rem;
+    font-weight: 700;
+    width: 100%;
+    font-family: var(--font-fancy);
+}
+
+.goalInput:focus {
+    outline: none;
+    border-bottom-color: var(--accent-gold);
+}
+
+.progressBar {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-top: 0.5rem;
+}
+
+.progressFill {
+    height: 100%;
+    transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+.mainList {
+    padding: 2rem;
+}
+
+.listHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.listHeader h2 {
+    font-family: var(--font-fancy);
+    font-size: 1.5rem;
+}
+
+.addButton {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 1rem;
+    background: var(--accent-gold);
+    border: none;
+    border-radius: 8px;
+    color: var(--bg-main);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.addButton:hover {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+}
+
+.addForm {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr auto;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px dashed var(--glass-border);
+    border-radius: 12px;
+}
+
+.addForm input,
+.addForm select {
+    padding: 0.5rem 1rem;
+    background: #fff;
+    /* Solid white background for visibility */
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    color: #333;
+    /* Explicit dark text */
+    font-size: 0.9rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    width: 100%;
+}
+
+[data-theme='dark'] .addForm input,
+[data-theme='dark'] .addForm select {
+    background: rgba(0, 0, 0, 0.4);
+    color: #fff;
+    /* Explicit white text in dark mode */
+}
+
+.addForm input:hover,
+.addForm select:hover {
+    border-color: var(--accent-gold-soft);
+    background: #f8f9fa;
+}
+
+[data-theme='dark'] .addForm input:hover,
+[data-theme='dark'] .addForm select:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.addForm input:focus,
+.addForm select:focus {
+    outline: none;
+    border-color: var(--accent-gold);
+    background: #fff;
+    box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.15);
+    transform: translateY(-1px);
+}
+
+[data-theme='dark'] .addForm input:focus,
+[data-theme='dark'] .addForm select:focus {
+    background: #1a1a1a;
+}
+
+.addForm button {
+    padding: 0.5rem 1.25rem;
+    background: var(--accent-gold-transparent);
+    color: var(--accent-gold);
+    border: 1px solid var(--accent-gold);
+    border-radius: 24px;
+    cursor: pointer;
+}
+
+.editInput,
+.editSelect {
+    width: 100%;
+    padding: 0.3rem 0.8rem;
+    background: #fff;
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    color: #333;
+    transition: all 0.2s;
+}
+
+[data-theme='dark'] .editInput,
+[data-theme='dark'] .editSelect {
+    background: rgba(0, 0, 0, 0.4);
+    color: #fff;
+}
+
+.editInput:focus,
+.editSelect:focus {
+    outline: none;
+    border-color: var(--accent-gold);
+    box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.15);
+}
+
+.iconButton {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.iconButton:hover {
+    color: var(--accent-gold);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.actions {
+    display: flex;
+    gap: 0.25rem;
+    justify-content: flex-end;
+}
+
+.paidToggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    width: fit-content;
+}
+
+.paidToggle.isPaid {
+    color: var(--accent-green);
+}
+
+.circle {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid var(--text-muted);
+}
+
+.deleteButton {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: color 0.2s;
+    padding: 4px;
+}
+
+.deleteButton:hover {
+    color: #ff4444;
+}
+
+.empty {
+    padding: 3rem;
+    text-align: center;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.categoryList {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.categoryPill {
+    padding: 0.3rem 0.8rem;
+    border-radius: 20px;
+    background: transparent;
+    border: 1px solid var(--glass-border);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.8rem;
+}
+
+.categoryPill:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-main);
+    border-color: var(--accent-gold-transparent);
+}
+
+.categoryPill.selected {
+    background: var(--accent-gold);
+    color: var(--bg-main);
+    border-color: var(--accent-gold);
+    font-weight: 600;
+}
+
+.addCategoryPill {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-style: dashed;
+}
+
+.customCategoryInputWrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+}
+
+.customCategoryInput {
+    flex: 1;
+    padding: 0.5rem 1rem;
+    background: var(--bg-main);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    color: var(--text-main);
+}
+
+.miniCategoryList {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+}
+
+.miniPill {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    background: transparent;
+    border: 1px solid var(--glass-border);
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 0.75rem;
+    transition: all 0.2s;
+}
+
+.miniPill:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--accent-gold-transparent);
+}
+
+.miniPill.selected {
+    background: var(--accent-gold-transparent);
+    color: var(--accent-gold);
+    border-color: var(--accent-gold);
+}
+
+.table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin-top: 1rem;
+}
+
+@media (max-width: 768px) {
+    .mainList {
+        padding: 1rem;
+        overflow-x: auto;
+    }
+
+    .table {
+        min-width: 600px;
+    }
+}
+
+.tableHead th {
+    text-align: left;
+    padding: 1rem;
+    color: var(--text-muted);
+    border-bottom: 2px solid var(--glass-border);
+    font-size: 0.85rem;
+    font-weight: 600;
+    background: rgba(0, 0, 0, 0.02);
+}
+
+.tableBody tr {
+    transition: background 0.2s;
+}
+
+.tableBody tr:nth-child(even) {
+    background: rgba(0, 0, 0, 0.02);
+}
+
+.tableBody td {
+    padding: 1rem;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.row:hover {
+    background: rgba(0, 0, 0, 0.04) !important;
+}
+
+.description {
+    font-weight: 500;
+    color: var(--text-main);
+}
+
+.category {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.amount {
+    font-family: var(--font-fancy);
+    font-weight: 600;
+}
+
+.costContainer {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.quickInput {
+    background: #fff;
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    padding: 0.3rem 0.5rem;
+    color: #333;
+    width: 80px;
+    font-family: var(--font-fancy);
+    transition: all 0.2s;
+}
+
+.quickInput:hover,
+.quickInput:focus {
+    background: #fff;
+    border-color: var(--accent-gold);
+    box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.15);
+    outline: none;
+    width: 90px;
+    /* Subtle expansion */
+}
+
+[data-theme='dark'] .quickInput {
+    background: rgba(0, 0, 0, 0.4);
+    color: #fff;
+}
+
+[data-theme='dark'] .quickInput:hover,
+[data-theme='dark'] .quickInput:focus {
+    background: rgba(255, 255, 255, 0.05);
+}

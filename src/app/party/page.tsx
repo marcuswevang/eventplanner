@@ -1,9 +1,26 @@
 import styles from "./party.module.css";
 import Link from "next/link";
-import { Music, GlassWater, MapPin, ChevronLeft, Info, Church } from "lucide-react";
+import { ChevronLeft, Info } from "lucide-react";
 import MapPopover from "@/components/MapPopover";
+import { prisma } from "@/lib/prisma";
+import { ICON_LIBRARY } from "@/components/IconPicker";
 
-export default function PartyPage() {
+const DEFAULT_SETTINGS = {
+    title: "Marita & Marcus",
+    intro: "Velkommen til fest! Vi gleder oss til å danse natten lang med dere.",
+    cards: [
+        { id: "ceremony", title: "Vielse", icon: "Church", text: "Tiller Kirke kl. 12:00", details: "15. august 2026" },
+        { id: "party", title: "Fest", icon: "Music", text: "Festen starter kl. 21:00", details: "Flotten Forsamlingshus" },
+        { id: "place", title: "Sted", icon: "MapPin", text: "Tillerbruvegen 147", details: "7092 Tiller" },
+        { id: "serving", title: "Servering", icon: "GlassWater", text: "Åpen bar og snacks", details: "Nattmat serveres ved midnatt." },
+        { id: "practical", title: "Praktisk info", icon: "Info", text: "Kontaktinfo forlovere og toastmaster", details: "Trykk for mer info" }
+    ]
+};
+
+export default async function PartyPage() {
+    const event = await prisma.event.findFirst();
+    const settings = (event?.settings as any)?.partyPage || DEFAULT_SETTINGS;
+
     return (
         <div className={styles.container}>
             <nav className={styles.nav}>
@@ -15,50 +32,44 @@ export default function PartyPage() {
 
             <main className={styles.main}>
                 <header className={styles.header}>
-                    <h1 className="title-gradient">Marita & Marcus</h1>
-                    <p className={styles.intro}>Velkommen til fest! Vi gleder oss til å danse natten lang med dere.</p>
+                    <h1 className="title-gradient">{settings.title}</h1>
+                    <p className={styles.intro}>{settings.intro}</p>
                 </header>
 
                 <section className={styles.grid}>
-                    <div className={`${styles.card} glass`}>
-                        <Church className={styles.icon} />
-                        <h3>Vielse</h3>
-                        <p>Tiller Kirke kl. 12:00</p>
-                        <p className={styles.detail}>15. august 2026</p>
-                    </div>
+                    {settings.cards.map((card: any) => {
+                        const Icon = ICON_LIBRARY[card.icon] || Info;
+                        const isPractical = card.id === 'practical';
 
-                    <div className={`${styles.card} glass`}>
-                        <Music className={styles.icon} />
-                        <h3>Fest</h3>
-                        <p>Festen starter kl. 21:00</p>
-                        <p className={styles.detail}>Flotten Forsamlingshus</p>
-                    </div>
+                        if (isPractical) {
+                            return (
+                                <Link key={card.id} href="/info" className={`${styles.card} glass`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                                    <Icon className={styles.icon} />
+                                    <h3>{card.title}</h3>
+                                    <p>{card.text}</p>
+                                    <p className={styles.detail}>{card.details}</p>
+                                </Link>
+                            );
+                        }
 
-                    <div className={`${styles.card} glass`}>
-                        <MapPin className={styles.icon} />
-                        <h3>Sted</h3>
-                        <p>
-                            <MapPopover
-                                venueName="Flotten Forsamlingshus"
-                                address="Tillerbruvegen 147, 7092 Tiller"
-                            />
-                        </p>
-                        <p className={styles.detail}>Tillerbruvegen 147, 7092 Tiller</p>
-                    </div>
-
-                    <div className={`${styles.card} glass`}>
-                        <GlassWater className={styles.icon} />
-                        <h3>Servering</h3>
-                        <p>Åpen bar og snacks</p>
-                        <p className={styles.detail}>Nattmat serveres ved midnatt.</p>
-                    </div>
-
-                    <Link href="/info" className={`${styles.card} glass`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                        <Info className={styles.icon} />
-                        <h3>Praktisk info</h3>
-                        <p>Kontaktinfo forlovere og toastmaster</p>
-                        <p className={styles.detail}>Trykk for mer info</p>
-                    </Link>
+                        return (
+                            <div key={card.id} className={`${styles.card} glass`}>
+                                <Icon className={styles.icon} />
+                                <h3>{card.title}</h3>
+                                {card.id === 'place' ? (
+                                    <p>
+                                        <MapPopover
+                                            venueName={card.text}
+                                            address={card.details}
+                                        />
+                                    </p>
+                                ) : (
+                                    <p>{card.text}</p>
+                                )}
+                                <p className={styles.detail}>{card.details}</p>
+                            </div>
+                        );
+                    })}
                 </section>
 
                 <div className={styles.actions}>
@@ -66,7 +77,7 @@ export default function PartyPage() {
                         Se ønskeliste
                     </Link>
                     <Link href="/playlist" className="luxury-button" style={{ background: 'transparent', border: '1px solid var(--accent-gold)', color: 'var(--accent-gold)' }}>
-                        Legg til en sang
+                        Ønsk deg en sang
                     </Link>
                 </div>
             </main>

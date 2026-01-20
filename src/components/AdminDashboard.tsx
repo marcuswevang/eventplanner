@@ -2,10 +2,12 @@
 
 import { useState, useEffect, useRef } from "react";
 import styles from "@/app/admin/admin.module.css";
-import { Users, LayoutDashboard, Utensils, Gift, Trash2, Martini, Pencil, WheatOff, MilkOff, Vegan, EggOff, PlusCircle, Circle, Square, RectangleHorizontal, Check, X, StretchHorizontal, CheckSquare, Lock, Unlock, FileUp } from "lucide-react";
+import { Users, LayoutDashboard, Utensils, Gift, Trash2, Martini, Pencil, WheatOff, MilkOff, Vegan, EggOff, PlusCircle, Circle, Square, RectangleHorizontal, Check, X, StretchHorizontal, CheckSquare, Lock, Unlock, FileUp, FileDown, DollarSign, Menu, Crown, UserRound, Star, Sparkles, Mic2, UtensilsCrossed, Heart } from "lucide-react";
 import AdminWishlistForm from "@/components/AdminWishlistForm";
 import AdminGuestForm from "@/components/AdminGuestForm";
-import { deleteGuest, deleteWishlistItem, createTable, deleteTable, updateTable, batchCreateTables, deleteTables, importGuests } from "@/app/actions";
+import BudgetManager from "@/components/BudgetManager";
+import AdminSettings from "@/components/AdminSettings";
+import { deleteGuest, deleteWishlistItem, createTable, deleteTable, updateTable, batchCreateTables, deleteTables, importGuests, exportGuestsAction, updateEventSettings } from "@/app/actions";
 
 interface AdminDashboardProps {
     eventId: string;
@@ -13,12 +15,17 @@ interface AdminDashboardProps {
     items: any[];
     songs: any[];
     tables: any[];
+    budgetItems: any[];
+    budgetGoal: number;
+    config?: any;
+    eventSettings?: any;
 }
 
-type Tab = 'dashboard' | 'wishlist' | 'guests' | 'tables' | 'map';
+type Tab = 'dashboard' | 'wishlist' | 'guests' | 'tables' | 'map' | 'budget' | 'settings';
 
-export default function AdminDashboard({ eventId, guests, items, songs, tables }: AdminDashboardProps) {
+export default function AdminDashboard({ eventId, guests, items, songs, tables, budgetItems, budgetGoal, config, eventSettings }: AdminDashboardProps) {
     const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [editingGuest, setEditingGuest] = useState<any>(null);
     const [newTableName, setNewTableName] = useState("");
     const [newTableCapacity, setNewTableCapacity] = useState(8);
@@ -34,6 +41,7 @@ export default function AdminDashboard({ eventId, guests, items, songs, tables }
     const [selectedTableIds, setSelectedTableIds] = useState<string[]>([]);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [importData, setImportData] = useState("");
+    const [isExporting, setIsExporting] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState<"ALL" | "ACCEPTED" | "DECLINED" | "PENDING">("ALL");
 
@@ -149,76 +157,125 @@ export default function AdminDashboard({ eventId, guests, items, songs, tables }
         const x = e.clientX - containerRect.left + container.scrollLeft - dragOffset.current.x;
         const y = e.clientY - containerRect.top + container.scrollTop - dragOffset.current.y;
 
-        const newPos = { ...tablePositionsRef.current[draggingId], x, y };
+        const oldPos = tablePositionsRef.current[draggingId];
+        if (!oldPos) return;
 
-        // Update ref immediately for mouseUp to read
-        tablePositionsRef.current = {
-            ...tablePositionsRef.current,
-            [draggingId]: newPos
-        };
+        const deltaX = x - oldPos.x;
+        const deltaY = y - oldPos.y;
 
-        setTablePositions(prev => ({
-            ...prev,
-            [draggingId]: newPos
-        }));
+        // If dragging a selected table, move all selected tables
+        const idsToMove = selectedTableIds.includes(draggingId) ? selectedTableIds : [draggingId];
+
+        const newTablePositions = { ...tablePositionsRef.current };
+
+        idsToMove.forEach(id => {
+            const tablePos = newTablePositions[id];
+            if (tablePos && !tablePos.isLocked) {
+                newTablePositions[id] = {
+                    ...tablePos,
+                    x: id === draggingId ? x : tablePos.x + deltaX,
+                    y: id === draggingId ? y : tablePos.y + deltaY
+                };
+            }
+        });
+
+        tablePositionsRef.current = newTablePositions;
+        setTablePositions(newTablePositions);
     };
 
     const handleMouseUp = async (e: React.MouseEvent) => {
         if (draggingId) {
-            // Read from ref to get the absolute latest position from the drag
-            const pos = tablePositionsRef.current[draggingId];
+            const idsToMove = selectedTableIds.includes(draggingId) ? selectedTableIds : [draggingId];
 
-            if (pos) {
-                // Optimistically update localTables
-                setLocalTables(prev => prev.map(t =>
-                    t.id === draggingId ? { ...t, x: Math.round(pos.x), y: Math.round(pos.y) } : t
-                ));
+            // Optimistically update localTables state
+            setLocalTables(prev => prev.map(t => {
+                const pos = tablePositionsRef.current[t.id];
+                if (idsToMove.includes(t.id) && pos) {
+                    return { ...t, x: Math.round(pos.x), y: Math.round(pos.y) };
+                }
+                return t;
+            }));
 
-                await updateTable(draggingId, { x: Math.round(pos.x), y: Math.round(pos.y) });
-            }
+            // Persist all moved tables
+            const promises = idsToMove.map(id => {
+                const pos = tablePositionsRef.current[id];
+                if (pos) {
+                    return updateTable(id, { x: Math.round(pos.x), y: Math.round(pos.y) });
+                }
+                return Promise.resolve();
+            });
+
+            await Promise.all(promises);
             setDraggingId(null);
         }
     };
 
     return (
         <div className={styles.container}>
-            <aside className={styles.sidebar}>
+            {/* Mobile Header */}
+            <div className="mobileOnlyHeader">
+                <button
+                    onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                    style={{ background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}
+                >
+                    <Menu size={24} />
+                </button>
+                <div style={{ fontVariant: 'small-caps', fontWeight: 700, fontSize: '1.2rem', color: 'var(--accent-gold)' }}>
+                    Admin
+                </div>
+            </div>
+
+            <aside className={`${styles.sidebar} ${isSidebarOpen ? styles.mobileOpen : ''}`}>
                 <div className={styles.logo}>Admin-konsoll</div>
                 <nav className={styles.nav}>
                     <button
-                        onClick={() => setActiveTab('dashboard')}
+                        onClick={() => { setActiveTab('dashboard'); setIsSidebarOpen(false); }}
                         className={`${styles.navItem} ${activeTab === 'dashboard' ? styles.active : ''}`}
                     >
                         <LayoutDashboard size={20} />
                         <span>Dashboard</span>
                     </button>
                     <button
-                        onClick={() => setActiveTab('wishlist')}
+                        onClick={() => { setActiveTab('wishlist'); setIsSidebarOpen(false); }}
                         className={`${styles.navItem} ${activeTab === 'wishlist' ? styles.active : ''}`}
                     >
                         <Gift size={20} />
                         <span>Ønskeliste</span>
                     </button>
                     <button
-                        onClick={() => setActiveTab('guests')}
+                        onClick={() => { setActiveTab('guests'); setIsSidebarOpen(false); }}
                         className={`${styles.navItem} ${activeTab === 'guests' ? styles.active : ''}`}
                     >
                         <Users size={20} />
                         <span>Gjester</span>
                     </button>
                     <button
-                        onClick={() => setActiveTab('tables')}
+                        onClick={() => { setActiveTab('tables'); setIsSidebarOpen(false); }}
                         className={`${styles.navItem} ${activeTab === 'tables' ? styles.active : ''}`}
                     >
                         <Utensils size={20} />
                         <span>Bordliste</span>
                     </button>
                     <button
-                        onClick={() => setActiveTab('map')}
+                        onClick={() => { setActiveTab('map'); setIsSidebarOpen(false); }}
                         className={`${styles.navItem} ${activeTab === 'map' ? styles.active : ''}`}
                     >
                         <LayoutDashboard size={20} />
                         <span>Bordoversikt</span>
+                    </button>
+                    <button
+                        onClick={() => { setActiveTab('budget'); setIsSidebarOpen(false); }}
+                        className={`${styles.navItem} ${activeTab === 'budget' ? styles.active : ''}`}
+                    >
+                        <DollarSign size={20} />
+                        <span>Budsjett</span>
+                    </button>
+                    <button
+                        onClick={() => { setActiveTab('settings'); setIsSidebarOpen(false); }}
+                        className={`${styles.navItem} ${activeTab === 'settings' ? styles.active : ''}`}
+                    >
+                        <PlusCircle size={20} />
+                        <span>Innstillinger</span>
                     </button>
                 </nav>
             </aside>
@@ -231,7 +288,11 @@ export default function AdminDashboard({ eventId, guests, items, songs, tables }
                         </header>
 
                         <section className={styles.stats}>
-                            <div className={`${styles.statCard} glass`} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            <button
+                                onClick={() => setActiveTab('guests')}
+                                className={`${styles.statCard} glass`}
+                                style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', cursor: 'pointer', border: 'none', background: 'rgba(255,255,255,0.03)', textAlign: 'center', width: '100%' }}
+                            >
                                 <h3>Gjester</h3>
                                 <p className={styles.statValue}>{guests.length}</p>
                                 <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -239,19 +300,53 @@ export default function AdminDashboard({ eventId, guests, items, songs, tables }
                                     <span style={{ color: '#ff4444' }}>❌ {guests.filter((g: any) => g.rsvpStatus === 'DECLINED').length} Avslått</span>
                                     <span style={{ color: 'var(--accent-gold)' }}>⏳ {guests.filter((g: any) => g.rsvpStatus === 'PENDING').length} Uavklart</span>
                                 </div>
-                            </div>
-                            <div className={`${styles.statCard} glass`}>
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('wishlist')}
+                                className={`${styles.statCard} glass`}
+                                style={{ cursor: 'pointer', border: 'none', background: 'rgba(255,255,255,0.03)', width: '100%' }}
+                            >
                                 <h3>Ønsker kjøpt</h3>
                                 <p className={styles.statValue}>
                                     {items.filter((i: any) => i.isPurchased).length} / {items.length}
                                 </p>
-                            </div>
-                            <div className={`${styles.statCard} glass`}>
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('dashboard')} // Stay here or add a specific songs tab if needed
+                                className={`${styles.statCard} glass`}
+                                style={{ cursor: 'pointer', border: 'none', background: 'rgba(255,255,255,0.03)', width: '100%' }}
+                            >
                                 <h3>Sanger i kø</h3>
                                 <p className={styles.statValue}>{songs.length}</p>
-                            </div>
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('budget')}
+                                className={`${styles.statCard} glass`}
+                                style={{ cursor: 'pointer', border: 'none', background: 'rgba(255,255,255,0.03)', width: '100%' }}
+                            >
+                                <h3>Budsjett</h3>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                    <p className={styles.statValue}>{budgetItems.reduce((sum, item) => sum + (item.actualCost || item.estimatedCost || 0), 0).toLocaleString()} kr</p>
+                                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>av {budgetGoal.toLocaleString()} kr mål</span>
+                                </div>
+                            </button>
                         </section>
                     </>
+                )}
+
+                {activeTab === 'budget' && (
+                    <section className={styles.budgetSection}>
+                        <header className={styles.header}>
+                            <h1>Budsjettstyring</h1>
+                            <p style={{ color: 'var(--text-muted)' }}>Hold kontroll på utgifter og betalinger.</p>
+                        </header>
+                        <BudgetManager
+                            eventId={eventId}
+                            initialItems={budgetItems}
+                            initialBudgetGoal={budgetGoal}
+                            initialConfig={config}
+                        />
+                    </section>
                 )}
 
                 {activeTab === 'wishlist' && (
@@ -326,6 +421,49 @@ export default function AdminDashboard({ eventId, guests, items, songs, tables }
                                     }}
                                 >
                                     <FileUp size={20} />
+                                </button>
+                                <button
+                                    onClick={async () => {
+                                        setIsExporting(true);
+                                        const res = await exportGuestsAction(eventId);
+                                        setIsExporting(false);
+                                        if (res.error) {
+                                            alert(res.error);
+                                        } else if (res.excel) {
+                                            const binaryString = window.atob(res.excel);
+                                            const bytes = new Uint8Array(binaryString.length);
+                                            for (let i = 0; i < binaryString.length; i++) {
+                                                bytes[i] = binaryString.charCodeAt(i);
+                                            }
+                                            const blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                                            const link = document.createElement("a");
+                                            const url = URL.createObjectURL(blob);
+                                            link.setAttribute("href", url);
+                                            link.setAttribute("download", `gjesteliste_${new Date().toISOString().split('T')[0]}.xlsx`);
+                                            link.style.visibility = 'hidden';
+                                            document.body.appendChild(link);
+                                            link.click();
+                                            document.body.removeChild(link);
+                                        }
+                                    }}
+                                    disabled={isExporting}
+                                    style={{
+                                        width: '40px',
+                                        height: '40px',
+                                        borderRadius: '50%',
+                                        border: '1px solid var(--accent-gold)',
+                                        background: 'transparent',
+                                        color: 'var(--accent-gold)',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        transition: 'all 0.2s ease',
+                                        opacity: isExporting ? 0.5 : 1
+                                    }}
+                                    title="Eksporter gjesteliste"
+                                >
+                                    <FileDown size={20} />
                                 </button>
                             </div>
                         </header>
@@ -408,7 +546,7 @@ export default function AdminDashboard({ eventId, guests, items, songs, tables }
                                 {guests.length === 0 ? (
                                     <p className={styles.empty}>Ingen gjester registrert.</p>
                                 ) : (
-                                    <div className={`${styles.tableCard} glass`} style={{ gridColumn: '1 / -1' }}>
+                                    <div className={`${styles.tableCard} glass`} style={{ gridColumn: '1 / -1', overflowX: 'auto' }}>
                                         {/* Search and Filters inside Card */}
                                         <div style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                                             <div style={{ position: 'relative', flex: 1, minWidth: '200px' }}>
@@ -431,10 +569,10 @@ export default function AdminDashboard({ eventId, guests, items, songs, tables }
                                                 </div>
                                             </div>
                                             <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', padding: '4px', borderRadius: '8px' }}>
-                                                <button onClick={() => setStatusFilter("ALL")} style={{ padding: '0.5rem 1rem', borderRadius: '6px', border: 'none', background: statusFilter === 'ALL' ? 'var(--text-main)' : 'transparent', color: statusFilter === 'ALL' ? 'var(--bg-main)' : 'var(--text-muted)', cursor: 'pointer', fontWeight: 500 }}>Alle</button>
-                                                <button onClick={() => setStatusFilter("ACCEPTED")} style={{ padding: '0.5rem 1rem', borderRadius: '6px', border: 'none', background: statusFilter === 'ACCEPTED' ? 'var(--accent-green)' : 'transparent', color: statusFilter === 'ACCEPTED' ? '#fff' : 'var(--text-muted)', cursor: 'pointer', fontWeight: 500 }}>Kommer</button>
-                                                <button onClick={() => setStatusFilter("DECLINED")} style={{ padding: '0.5rem 1rem', borderRadius: '6px', border: 'none', background: statusFilter === 'DECLINED' ? '#e74c3c' : 'transparent', color: statusFilter === 'DECLINED' ? '#fff' : 'var(--text-muted)', cursor: 'pointer', fontWeight: 500 }}>Kan ikke</button>
-                                                <button onClick={() => setStatusFilter("PENDING")} style={{ padding: '0.5rem 1rem', borderRadius: '6px', border: 'none', background: statusFilter === 'PENDING' ? 'var(--accent-gold)' : 'transparent', color: statusFilter === 'PENDING' ? '#000' : 'var(--text-muted)', cursor: 'pointer', fontWeight: 500 }}>Uavklart</button>
+                                                <button onClick={() => setStatusFilter("ALL")} style={{ padding: '0.5rem 1rem', borderRadius: '6px', border: 'none', background: statusFilter === 'ALL' ? '#d4af37' : 'transparent', color: statusFilter === 'ALL' ? '#000' : 'rgba(255,255,255,0.6)', cursor: 'pointer', fontWeight: 500 }}>Alle</button>
+                                                <button onClick={() => setStatusFilter("ACCEPTED")} style={{ padding: '0.5rem 1rem', borderRadius: '6px', border: 'none', background: statusFilter === 'ACCEPTED' ? '#2ecc71' : 'transparent', color: statusFilter === 'ACCEPTED' ? '#fff' : 'rgba(255,255,255,0.6)', cursor: 'pointer', fontWeight: 500 }}>Kommer</button>
+                                                <button onClick={() => setStatusFilter("DECLINED")} style={{ padding: '0.5rem 1rem', borderRadius: '6px', border: 'none', background: statusFilter === 'DECLINED' ? '#e74c3c' : 'transparent', color: statusFilter === 'DECLINED' ? '#fff' : 'rgba(255,255,255,0.6)', cursor: 'pointer', fontWeight: 500 }}>Kan ikke</button>
+                                                <button onClick={() => setStatusFilter("PENDING")} style={{ padding: '0.5rem 1rem', borderRadius: '6px', border: 'none', background: statusFilter === 'PENDING' ? '#d4af37' : 'transparent', color: statusFilter === 'PENDING' ? '#000' : 'rgba(255,255,255,0.6)', cursor: 'pointer', fontWeight: 500 }}>Uavklart</button>
                                             </div>
                                         </div>
 
@@ -456,6 +594,16 @@ export default function AdminDashboard({ eventId, guests, items, songs, tables }
                                                         <li key={guest.id} style={{ marginBottom: '0.5rem', paddingRight: '1rem', breakInside: 'avoid' }}>
                                                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                                    {(() => {
+                                                                        const role = guest.role?.trim();
+                                                                        if (role === 'Brud') return <Heart size={18} style={{ color: 'var(--accent-gold)' }} />;
+                                                                        if (role === 'Brudgom') return <Crown size={18} style={{ color: 'var(--accent-gold)' }} />;
+                                                                        if (role === 'Forlover (Brud)') return <Star size={18} style={{ color: 'var(--accent-gold)' }} />;
+                                                                        if (role === 'Forlover (Brudgom)') return <Sparkles size={18} style={{ color: 'var(--accent-gold)' }} />;
+                                                                        if (role === 'Toastmaster') return <Mic2 size={18} style={{ color: 'var(--accent-gold)' }} />;
+                                                                        if (role === 'Takk for maten') return <UtensilsCrossed size={18} style={{ color: 'var(--accent-gold)' }} />;
+                                                                        return null;
+                                                                    })()}
                                                                     <strong>{guest.name}</strong>
                                                                     {guest.type === 'DINNER' ? (
                                                                         <>
@@ -483,34 +631,35 @@ export default function AdminDashboard({ eventId, guests, items, songs, tables }
                                                                     </button>
                                                                 </div>
                                                             </div>
-                                                            {guest.allergies && (
-                                                                <div style={{ fontSize: '0.8rem', color: '#e67e22', display: 'flex', alignItems: 'center', gap: '0.3rem', flexWrap: 'wrap' }}>
-                                                                    {(() => {
-                                                                        const parts = guest.allergies.split(/,\s*/);
-                                                                        const icons: React.ReactNode[] = [];
-                                                                        const text: string[] = [];
+                                                            <div style={{ fontSize: '0.8rem', color: '#e67e22', display: 'flex', alignItems: 'center', gap: '0.3rem', flexWrap: 'wrap', minHeight: '1.2rem', marginBottom: '0.2rem' }}>
+                                                                {guest.allergies && (() => {
+                                                                    const parts = guest.allergies.split(/,\s*/);
+                                                                    const icons: React.ReactNode[] = [];
+                                                                    const text: string[] = [];
 
-                                                                        parts.forEach((part: string) => {
-                                                                            const p = part.trim();
-                                                                            if (p === 'Gluten') icons.push(<span key="gluten" title="Gluten" style={{ cursor: 'help' }}><WheatOff size={18} /></span>);
-                                                                            else if (p === 'Laktose') icons.push(<span key="laktose" title="Laktose" style={{ cursor: 'help' }}><MilkOff size={18} /></span>);
-                                                                            else if (p === 'Vegetar') icons.push(<span key="vegetar" title="Vegetar" style={{ cursor: 'help' }}><Vegan size={18} /></span>);
-                                                                            else if (p === 'Egg') icons.push(<span key="egg" title="Egg" style={{ cursor: 'help' }}><EggOff size={18} /></span>);
-                                                                            else if (p) text.push(p);
-                                                                        });
+                                                                    parts.forEach((part: string) => {
+                                                                        const p = part.trim();
+                                                                        if (p === 'Gluten') icons.push(<span key="gluten" title="Gluten" style={{ cursor: 'help' }}><WheatOff size={16} /></span>);
+                                                                        else if (p === 'Laktose') icons.push(<span key="laktose" title="Laktose" style={{ cursor: 'help' }}><MilkOff size={16} /></span>);
+                                                                        else if (p === 'Vegetar') icons.push(<span key="vegetar" title="Vegetar" style={{ cursor: 'help' }}><Vegan size={16} /></span>);
+                                                                        else if (p === 'Egg') icons.push(<span key="egg" title="Egg" style={{ cursor: 'help' }}><EggOff size={16} /></span>);
+                                                                        else if (p) text.push(p);
+                                                                    });
 
-                                                                        return (
-                                                                            <>
-                                                                                {icons}
-                                                                                {text.length > 0 && <span>{text.join(', ')}</span>}
-                                                                            </>
-                                                                        );
-                                                                    })()}
-                                                                </div>
-                                                            )}
+                                                                    return (
+                                                                        <>
+                                                                            {icons}
+                                                                            {text.length > 0 && <span>{text.join(', ')}</span>}
+                                                                        </>
+                                                                    );
+                                                                })()}
+                                                            </div>
                                                             <div style={{ fontSize: '0.8rem', color: guest.rsvpStatus === 'ACCEPTED' ? 'var(--accent-green)' : guest.rsvpStatus === 'DECLINED' ? '#e74c3c' : 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                                                                 <span>{guest.rsvpStatus === 'ACCEPTED' ? '✅ Bekreftet' : guest.rsvpStatus === 'DECLINED' ? '❌ Kommer ikke' : '⏳ Venter svar'}</span>
-                                                                {guest.role && <span style={{ color: 'var(--accent-gold)', fontWeight: 500 }}>• {guest.role}</span>}
+                                                                {guest.role && (
+                                                                    !['Brud', 'Brudgom', 'Forlover (Brud)', 'Forlover (Brudgom)', 'Toastmaster', 'Takk for maten'].includes(guest.role) &&
+                                                                    <span style={{ color: 'var(--accent-gold)', fontWeight: 500 }}>• {guest.role}</span>
+                                                                )}
                                                                 {guest.mobile && <span style={{ color: 'var(--text-muted)' }}>• 📱 {guest.mobile}</span>}
                                                                 {guest.table && <span style={{ color: 'var(--text-muted)' }}>• Bord: {guest.table.name}</span>}
                                                                 {guest.partner && <span style={{ color: 'var(--text-muted)' }}>• Partner: {guest.partner.name}</span>}
@@ -947,6 +1096,16 @@ export default function AdminDashboard({ eventId, guests, items, songs, tables }
                                 })}
                             </div>
                         </div>
+                    </section>
+                )}
+
+                {activeTab === 'settings' && (
+                    <section className={styles.settingsSection}>
+                        <header className={styles.header}>
+                            <h1>Sideinnstillinger</h1>
+                            <p style={{ color: 'var(--text-muted)' }}>Maksimal fleksibilitet: Endre tekster og ikoner på hele siden.</p>
+                        </header>
+                        <AdminSettings eventId={eventId} initialEventSettings={eventSettings} guests={guests} />
                     </section>
                 )}
             </main>

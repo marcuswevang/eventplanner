@@ -5,7 +5,7 @@ import { addWishlistItem } from "@/app/actions";
 import styles from "./AdminWishlistForm.module.css";
 import { PlusCircle, Image as ImageIcon, Link as LinkIcon, MapPin, Gift, Loader2 } from "lucide-react";
 
-export default function AdminWishlistForm() {
+export default function AdminWishlistForm({ eventId }: { eventId: string }) {
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
     const [imageUrl, setImageUrl] = useState("");
@@ -18,7 +18,7 @@ export default function AdminWishlistForm() {
         setLoading(true);
         setMessage("");
 
-        const result = await addWishlistItem(title, description, imageUrl, link);
+        const result = await addWishlistItem(eventId, title, description, imageUrl, link);
 
         if (result.error) {
             setMessage(result.error);

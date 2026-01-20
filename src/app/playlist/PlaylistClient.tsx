@@ -4,7 +4,7 @@ import { useState } from "react";
 import { addSongRequest } from "@/app/actions";
 import styles from "./playlist.module.css";
 
-export default function PlaylistClient() {
+export default function PlaylistClient({ eventId }: { eventId: string }) {
     const [title, setTitle] = useState("");
     const [artist, setArtist] = useState("");
     const [name, setName] = useState("");
@@ -15,7 +15,7 @@ export default function PlaylistClient() {
         if (!title.trim() || !artist.trim() || !name.trim()) return;
 
         setLoading(true);
-        const result = await addSongRequest(title, artist, name);
+        const result = await addSongRequest(eventId, title, artist, name);
         setLoading(false);
 
         if (result.success) {

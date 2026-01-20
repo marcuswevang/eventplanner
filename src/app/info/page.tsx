@@ -1,8 +1,39 @@
 import styles from "./info.module.css";
 import Link from "next/link";
-import { ChevronLeft, User, Phone, MessageSquare, Instagram, Camera, Sparkles, Gem } from "lucide-react";
+import { ChevronLeft, User, Phone, MessageSquare, Instagram, Camera, Sparkles, Gem, Star, Mic2 } from "lucide-react";
+import { prisma } from "@/lib/prisma";
+import { formatNorwegianPhoneNumber } from "@/utils/format";
 
-export default function InfoPage() {
+const ROLE_ICONS: Record<string, any> = {
+    "Toastmaster": Mic2,
+    "Forlover (Brud)": Sparkles,
+    "Forlover (Brudgom)": Gem,
+    "Brud": Heart,
+    "Brudgom": Crown,
+    "Takk for maten": Star
+};
+
+// Fallback for Heart and Crown as they are used in icons but might not be in the direct list
+import { Heart, Crown } from "lucide-react";
+
+export default async function InfoPage() {
+    // Fetch event and guests
+    const event = await prisma.event.findFirst();
+    const guests = await prisma.guest.findMany({
+        where: { eventId: event?.id },
+        orderBy: { name: 'asc' }
+    });
+
+    const eventSettings = (event?.settings as any) || {};
+    const hashtag = eventSettings.common?.instagramHashtag || "#mpw2026";
+
+    // Group guests by role
+    const guestsWithRoles = guests.filter(g => g.role && g.role !== "");
+
+    const toastmasters = guestsWithRoles.filter(g => g.role === "Toastmaster");
+    const bridgeMaids = guestsWithRoles.filter(g => g.role === "Forlover (Brud)");
+    const groomMen = guestsWithRoles.filter(g => g.role === "Forlover (Brudgom)");
+
     return (
         <div className={styles.container}>
             <nav className={styles.nav}>
@@ -19,44 +50,56 @@ export default function InfoPage() {
                 </header>
 
                 <section className={styles.grid}>
-                    <div className={`${styles.card} glass`}>
-                        <User className={styles.icon} />
-                        <h3>Toastmaster</h3>
-                        <div className={styles.contactInfo}>
-                            <p className={styles.name}>Dag Skage</p>
-                            <p className={styles.phone}><Phone size={14} style={{ marginRight: '4px' }} /> +47 97 13 17 15</p>
+                    {toastmasters.length > 0 && (
+                        <div className={`${styles.card} glass`}>
+                            <Mic2 className={styles.icon} />
+                            <h3>Toastmaster</h3>
+                            <div className={styles.contactInfo}>
+                                {toastmasters.map(tm => (
+                                    <div key={tm.id} className={styles.person}>
+                                        <p className={styles.name}>{tm.name}</p>
+                                        {tm.mobile && (
+                                            <p className={styles.phone}><Phone size={14} style={{ marginRight: '4px' }} /> {formatNorwegianPhoneNumber(tm.mobile)}</p>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
                         </div>
-                    </div>
+                    )}
 
-                    <div className={`${styles.card} glass`}>
-                        <Sparkles className={styles.icon} />
-                        <h3>Forlovere (Brud)</h3>
-                        <div className={styles.contactInfo}>
-                            <div className={styles.person}>
-                                <p className={styles.name}>Linn Hoffstrøm Gram</p>
-                                <p className={styles.phone}><Phone size={14} style={{ marginRight: '4px' }} /> +47 91 37 25 05</p>
-                            </div>
-                            <div className={styles.person}>
-                                <p className={styles.name}>Torild Sletta-Heimdal</p>
-                                <p className={styles.phone}><Phone size={14} style={{ marginRight: '4px' }} /> +47 90 87 91 02</p>
+                    {bridgeMaids.length > 0 && (
+                        <div className={`${styles.card} glass`}>
+                            <Sparkles className={styles.icon} />
+                            <h3>Forlovere (Brud)</h3>
+                            <div className={styles.contactInfo}>
+                                {bridgeMaids.map(bm => (
+                                    <div key={bm.id} className={styles.person}>
+                                        <p className={styles.name}>{bm.name}</p>
+                                        {bm.mobile && (
+                                            <p className={styles.phone}><Phone size={14} style={{ marginRight: '4px' }} /> {formatNorwegianPhoneNumber(bm.mobile)}</p>
+                                        )}
+                                    </div>
+                                ))}
                             </div>
                         </div>
-                    </div>
+                    )}
 
-                    <div className={`${styles.card} glass`}>
-                        <Gem className={styles.icon} />
-                        <h3>Forlovere (Brudgom)</h3>
-                        <div className={styles.contactInfo}>
-                            <div className={styles.person}>
-                                <p className={styles.name}>Navn Navnesen</p>
-                                <p className={styles.phone}><Phone size={14} style={{ marginRight: '4px' }} /> +47 000 00 000</p>
-                            </div>
-                            <div className={styles.person}>
-                                <p className={styles.name}>Navn Navnesen</p>
-                                <p className={styles.phone}><Phone size={14} style={{ marginRight: '4px' }} /> +47 000 00 000</p>
+                    {groomMen.length > 0 && (
+                        <div className={`${styles.card} glass`}>
+                            <Gem className={styles.icon} />
+                            <h3>Forlovere (Brudgom)</h3>
+                            <div className={styles.contactInfo}>
+                                {groomMen.map(gm => (
+                                    <div key={gm.id} className={styles.person}>
+                                        <p className={styles.name}>{gm.name}</p>
+                                        {gm.mobile && (
+                                            <p className={styles.phone}><Phone size={14} style={{ marginRight: '4px' }} /> {formatNorwegianPhoneNumber(gm.mobile)}</p>
+                                        )}
+                                    </div>
+                                ))}
                             </div>
                         </div>
-                    </div>
+                    )}
 
                     <div className={`${styles.card} glass`}>
                         <MessageSquare className={styles.icon} />
@@ -70,7 +113,7 @@ export default function InfoPage() {
                         <p>Del gjerne deres bilder fra dagen med oss på Instagram!</p>
                         <div className={styles.hashtagBox}>
                             <Instagram size={18} />
-                            <span className={styles.hashtag}>#mpw2026</span>
+                            <span className={styles.hashtag}>{hashtag}</span>
                         </div>
                     </div>
                 </section>

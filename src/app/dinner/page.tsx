@@ -1,12 +1,28 @@
 import styles from "./dinner.module.css";
 import Link from "next/link";
-import { Utensils, Clock, MapPin, ChevronLeft, Info, Church, BookOpen } from "lucide-react";
+import { ChevronLeft, Info } from "lucide-react";
 import MapPopover from "@/components/MapPopover";
+import { prisma } from "@/lib/prisma";
+import { ICON_LIBRARY } from "@/components/IconPicker";
 
-export default function DinnerPage() {
+const DEFAULT_SETTINGS = {
+    title: "Marita & Marcus",
+    intro: "Velkommen til middag. Vi gleder oss stort til å dele denne dagen med dere.",
+    cards: [
+        { id: "ceremony", title: "Vielse", icon: "Church", text: "Tiller Kirke kl. 12:00", details: "Vennligst møt opp i god tid." },
+        { id: "dinner", title: "Middag", icon: "Utensils", text: "Middagen serveres kl. 17:00", details: "Flotten Forsamlingshus" },
+        { id: "place", title: "Sted", icon: "MapPin", text: "Tillerbruvegen 147", details: "7092 Tiller" },
+        { id: "menu", title: "Meny", icon: "BookOpen", text: "Sesongbasert 3-retters", details: "Gi beskjed om allergier." },
+        { id: "practical", title: "Praktisk info", icon: "Info", text: "Kontaktinfo forlovere og toastmaster", details: "Trykk for mer info" }
+    ]
+};
+
+export default async function DinnerPage() {
+    const event = await prisma.event.findFirst();
+    const settings = (event?.settings as any)?.dinnerPage || DEFAULT_SETTINGS;
+
     return (
         <div className={styles.container}>
-
             <nav className={styles.nav}>
                 <Link href="/" className={styles.backLink}>
                     <ChevronLeft size={20} />
@@ -16,50 +32,44 @@ export default function DinnerPage() {
 
             <main className={styles.main}>
                 <header className={styles.header}>
-                    <h1 className="title-gradient">Marita & Marcus</h1>
-                    <p className={styles.intro}>Velkommen til middag. Vi gleder oss stort til å dele denne dagen med dere.</p>
+                    <h1 className="title-gradient">{settings.title}</h1>
+                    <p className={styles.intro}>{settings.intro}</p>
                 </header>
 
                 <section className={styles.grid}>
-                    <div className={`${styles.card} glass`}>
-                        <Church className={styles.icon} />
-                        <h3>Vielse</h3>
-                        <p>Tiller Kirke kl. 12:00</p>
-                        <p className={styles.detail}>Vennligst møt opp i god tid.</p>
-                    </div>
+                    {settings.cards.map((card: any) => {
+                        const Icon = ICON_LIBRARY[card.icon] || Info;
+                        const isPractical = card.id === 'practical';
 
-                    <div className={`${styles.card} glass`}>
-                        <Utensils className={styles.icon} />
-                        <h3>Middag</h3>
-                        <p>Middagen serveres kl. 17:00</p>
-                        <p className={styles.detail}>Flotten Forsamlingshus</p>
-                    </div>
+                        if (isPractical) {
+                            return (
+                                <Link key={card.id} href="/info" className={`${styles.card} glass`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                                    <Icon className={styles.icon} />
+                                    <h3>{card.title}</h3>
+                                    <p>{card.text}</p>
+                                    <p className={styles.detail}>{card.details}</p>
+                                </Link>
+                            );
+                        }
 
-                    <div className={`${styles.card} glass`}>
-                        <MapPin className={styles.icon} />
-                        <h3>Sted</h3>
-                        <p>
-                            <MapPopover
-                                venueName="Flotten Forsamlingshus"
-                                address="Tillerbruvegen 147, 7092 Tiller"
-                            />
-                        </p>
-                        <p className={styles.detail}>Tillerbruvegen 147, 7092 Tiller</p>
-                    </div>
-
-                    <div className={`${styles.card} glass`}>
-                        <BookOpen className={styles.icon} />
-                        <h3>Meny</h3>
-                        <p>Sesongbasert 3-retters</p>
-                        <p className={styles.detail}>Gi beskjed om allergier.</p>
-                    </div>
-
-                    <Link href="/info" className={`${styles.card} glass`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                        <Info className={styles.icon} />
-                        <h3>Praktisk info</h3>
-                        <p>Kontaktinfo forlovere og toastmaster</p>
-                        <p className={styles.detail}>Trykk for mer info</p>
-                    </Link>
+                        return (
+                            <div key={card.id} className={`${styles.card} glass`}>
+                                <Icon className={styles.icon} />
+                                <h3>{card.title}</h3>
+                                {card.id === 'place' ? (
+                                    <p>
+                                        <MapPopover
+                                            venueName={card.text}
+                                            address={card.details}
+                                        />
+                                    </p>
+                                ) : (
+                                    <p>{card.text}</p>
+                                )}
+                                <p className={styles.detail}>{card.details}</p>
+                            </div>
+                        );
+                    })}
                 </section>
 
                 <div className={styles.actions}>

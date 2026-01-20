@@ -10,15 +10,18 @@ interface TimeLeft {
     seconds: number;
 }
 
-export default function Countdown() {
-    const [timeLeft, setTimeLeft] = useState<TimeLeft | null>(null);
+interface CountdownProps {
+    targetDate?: string;
+}
+
+export default function Countdown({ targetDate }: CountdownProps) {
+    const [timeLeft, setTimeLeft] = useState<{ days: number, hours: number, minutes: number, seconds: number } | null>(null);
 
     useEffect(() => {
-        const targetDate = new Date('2026-08-15T15:00:00');
-
         const calculateTimeLeft = () => {
+            const weddingDate = targetDate ? new Date(targetDate) : new Date('2026-08-15T15:00:00');
             const now = new Date();
-            const difference = targetDate.getTime() - now.getTime();
+            const difference = weddingDate.getTime() - now.getTime();
 
             if (difference > 0) {
                 setTimeLeft({

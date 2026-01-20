@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { addGuest, updateGuest } from "@/app/actions";
 import styles from "./AdminGuestForm.module.css";
-import { PlusCircle, Loader2, Utensils, Martini, CheckCircle2, XCircle, HelpCircle, WheatOff, EggOff, MilkOff, Vegan, Save, X } from "lucide-react";
+import { PlusCircle, Loader2, Utensils, Martini, CheckCircle2, XCircle, HelpCircle, WheatOff, EggOff, MilkOff, Vegan, Save, X, Heart, Star, Sparkles, Mic2, ChefHat, MailCheck, Crown } from "lucide-react";
+import { formatNorwegianPhoneNumber } from "@/utils/format";
 
 interface AdminGuestFormProps {
+    eventId: string;
     initialData?: any;
     tables?: any[];
     guests?: any[];
@@ -11,7 +13,7 @@ interface AdminGuestFormProps {
     onSuccess?: () => void;
 }
 
-export default function AdminGuestForm({ initialData, tables = [], guests = [], onCancel, onSuccess }: AdminGuestFormProps) {
+export default function AdminGuestForm({ eventId, initialData, tables = [], guests = [], onCancel, onSuccess }: AdminGuestFormProps) {
     const [name, setName] = useState("");
     const [isDinner, setIsDinner] = useState(false);
     const [isParty, setIsParty] = useState(false);
@@ -22,6 +24,8 @@ export default function AdminGuestForm({ initialData, tables = [], guests = [], 
     const [mobile, setMobile] = useState("");
     const [address, setAddress] = useState("");
     const [role, setRole] = useState("");
+    const [notes, setNotes] = useState("");
+    const [invitationSent, setInvitationSent] = useState(false);
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState("");
 
@@ -44,6 +48,8 @@ export default function AdminGuestForm({ initialData, tables = [], guests = [], 
             setMobile(initialData.mobile || "");
             setAddress(initialData.address || "");
             setRole(initialData.role || "");
+            setNotes(initialData.notes || "");
+            setInvitationSent(initialData.invitationSent || false);
         } else {
             setName("");
             setIsDinner(true);
@@ -55,14 +61,22 @@ export default function AdminGuestForm({ initialData, tables = [], guests = [], 
             setMobile("");
             setAddress("");
             setRole("");
+            setNotes("");
+            setInvitationSent(false);
         }
     }, [initialData]);
 
+    useEffect(() => {
+        if (role && !invitationSent) {
+            setInvitationSent(true);
+        }
+    }, [role]);
+
     const handleAddAllergy = (allergy: string) => {
         if (allergies.includes(allergy)) {
-            setAllergies(allergies.replace(new RegExp(`(?:^|, )${allergy}`), "").trim().replace(/^, /, ""));
+            setAllergies(allergies.replace(new RegExp(`(?:^|,)${allergy} `), "").trim().replace(/^, /, ""));
         } else {
-            setAllergies(allergies ? `${allergies}, ${allergy}` : allergy);
+            setAllergies(allergies ? `${allergies}, ${allergy} ` : allergy);
         }
     };
 
@@ -84,11 +98,9 @@ export default function AdminGuestForm({ initialData, tables = [], guests = [], 
             finalType = "DINNER";
         }
 
-        // If neither is selected, maybe alert user?
+        // Default to PARTY if neither is checked
         if (!isDinner && !isParty) {
-            setMessage("Du må velge minst en type (Middag eller Fest).");
-            setLoading(false);
-            return;
+            finalType = "PARTY";
         }
 
         const finalTableId = tableId === "" ? null : tableId;
@@ -96,9 +108,9 @@ export default function AdminGuestForm({ initialData, tables = [], guests = [], 
 
         let result;
         if (initialData) {
-            result = await updateGuest(initialData.id, { name, type: finalType, allergies, rsvpStatus, tableId: finalTableId, partnerId: finalPartnerId, mobile, address, role });
+            result = await updateGuest(initialData.id, { name, type: finalType, allergies, rsvpStatus, tableId: finalTableId, partnerId: finalPartnerId, mobile, address, role, notes, invitationSent });
         } else {
-            result = await addGuest(name, finalType, allergies, rsvpStatus, finalTableId, finalPartnerId, mobile, address, role);
+            result = await addGuest(eventId, name, finalType, allergies, rsvpStatus, finalTableId, finalPartnerId, mobile, address, role, notes, invitationSent);
         }
 
         if (result.error) {
@@ -116,6 +128,8 @@ export default function AdminGuestForm({ initialData, tables = [], guests = [], 
                 setMobile("");
                 setAddress("");
                 setRole("");
+                setNotes("");
+                setInvitationSent(false);
             }
             if (onSuccess) onSuccess();
         }
@@ -154,20 +168,58 @@ export default function AdminGuestForm({ initialData, tables = [], guests = [], 
                     <input
                         type="text"
                         value={mobile}
-                        onChange={(e) => setMobile(e.target.value)}
+                        onChange={(e) => setMobile(formatNorwegianPhoneNumber(e.target.value))}
                         placeholder="Mobilnummer"
                         className={styles.input}
                     />
                 </div>
-                <div style={{ flex: 1 }}>
-                    <label>Relasjon</label>
-                    <input
-                        type="text"
-                        value={role}
-                        onChange={(e) => setRole(e.target.value)}
-                        placeholder="Eks: Brudgommens mor"
-                        className={styles.input}
-                    />
+                <label>Relasjon</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    {[
+                        { id: "Brud", icon: Heart, label: "Brud" },
+                        { id: "Brudgom", icon: Crown, label: "Brudgom" },
+                        { id: "Forlover (Brud)", icon: Star, label: "Forlover (Brud)" },
+                        { id: "Forlover (Brudgom)", icon: Sparkles, label: "Forlover (Brudgom)" },
+                        { id: "Toastmaster", icon: Mic2, label: "Toastmaster" },
+                        { id: "Takk for maten", icon: ChefHat, label: "Takk for maten" }
+                    ].map((r) => (
+                        <button
+                            key={r.id}
+                            type="button"
+                            onClick={() => setRole(role === r.id ? "" : r.id)}
+                            className={`${styles.tagButton} ${role === r.id ? styles.active : ""} `}
+                            style={{
+                                padding: '0.6rem',
+                                width: '40px',
+                                height: '40px',
+                                justifyContent: 'center',
+                                borderRadius: '50%',
+                                display: 'flex',
+                                alignItems: 'center'
+                            }}
+                            title={r.label}
+                        >
+                            <r.icon size={20} />
+                        </button>
+                    ))}
+                    {role && ![
+                        "Brud",
+                        "Brudgom",
+                        "Forlover (Brud)",
+                        "Forlover (Brudgom)",
+                        "Toastmaster",
+                        "Takk for maten"
+                    ].includes(role) && (
+                            <button
+                                type="button"
+                                onClick={() => setRole("")}
+                                className={`${styles.tagButton} ${styles.active} `}
+                                style={{ padding: '0.6rem 1rem' }}
+                                title={`${role} (Egendefinert)`}
+                            >
+                                {role}
+                            </button>
+                        )}
                 </div>
             </div>
             <div className={styles.inputGroup}>
@@ -178,6 +230,32 @@ export default function AdminGuestForm({ initialData, tables = [], guests = [], 
                     onChange={(e) => setAddress(e.target.value)}
                     placeholder="Gateadresse, Postnummer Sted"
                     className={styles.input}
+                />
+            </div>
+
+            <div className={styles.inputGroup}>
+                <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.8rem', padding: '0.5rem 0' }}>
+                    <input
+                        type="checkbox"
+                        checked={invitationSent}
+                        onChange={(e) => setInvitationSent(e.target.checked)}
+                        style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                    />
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <MailCheck size={18} color={invitationSent ? 'var(--accent-gold)' : 'var(--text-muted)'} />
+                        Invitasjon levert
+                    </span>
+                </label>
+            </div>
+
+            <div className={styles.inputGroup}>
+                <label>Notater</label>
+                <textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Interne notater om gjesten..."
+                    className={styles.input}
+                    style={{ height: '80px', resize: 'vertical', paddingTop: '0.8rem' }}
                 />
             </div>
 
@@ -209,7 +287,7 @@ export default function AdminGuestForm({ initialData, tables = [], guests = [], 
                     <button
                         type="button"
                         onClick={() => setIsDinner(!isDinner)}
-                        className={`${styles.typeButton} ${isDinner ? styles.activeType : ""}`}
+                        className={`${styles.typeButton} ${isDinner ? styles.activeType : ""} `}
                         style={{
                             display: 'flex',
                             flexDirection: 'column',
@@ -230,7 +308,7 @@ export default function AdminGuestForm({ initialData, tables = [], guests = [], 
                     <button
                         type="button"
                         onClick={() => setIsParty(!isParty)}
-                        className={`${styles.typeButton} ${isParty ? styles.activeType : ""}`}
+                        className={`${styles.typeButton} ${isParty ? styles.activeType : ""} `}
                         style={{
                             display: 'flex',
                             flexDirection: 'column',
@@ -258,7 +336,7 @@ export default function AdminGuestForm({ initialData, tables = [], guests = [], 
                         <button
                             type="button"
                             onClick={() => setTableId("")}
-                            className={`${styles.tagButton} ${tableId === "" ? styles.active : ""}`}
+                            className={`${styles.tagButton} ${tableId === "" ? styles.active : ""} `}
                             style={{ padding: '0.6rem 1rem' }}
                         >
                             Ingen
@@ -280,7 +358,7 @@ export default function AdminGuestForm({ initialData, tables = [], guests = [], 
                                     key={table.id}
                                     type="button"
                                     onClick={() => !isFull && setTableId(table.id)}
-                                    className={`${styles.tagButton} ${tableId === table.id ? styles.active : ""}`}
+                                    className={`${styles.tagButton} ${tableId === table.id ? styles.active : ""} `}
                                     disabled={isFull}
                                     style={{
                                         padding: '0.6rem 1rem',
@@ -290,14 +368,14 @@ export default function AdminGuestForm({ initialData, tables = [], guests = [], 
                                         color: isFull ? '#888' : undefined,
                                         border: isFull ? '1px solid transparent' : undefined
                                     }}
-                                    title={isFull ? `Fullt (${guestsCount}/${capacity})` : `${guestsCount}/${capacity} plasser`}
+                                    title={isFull ? `Fullt(${guestsCount} / ${capacity})` : `${guestsCount}/${capacity} plasser`}
                                 >
-                                    {table.name} <span style={{ fontSize: '0.7em', opacity: 0.7, marginLeft: '4px' }}>({guestsCount}/{capacity})</span>
-                                </button>
+                                    {table.name} < span style={{ fontSize: '0.7em', opacity: 0.7, marginLeft: '4px' }}> ({guestsCount} / {capacity})</span >
+                                </button >
                             );
                         })}
-                    </div>
-                </div>
+                    </div >
+                </div >
             )}
 
             <div className={styles.inputGroup}>
@@ -398,6 +476,6 @@ export default function AdminGuestForm({ initialData, tables = [], guests = [], 
             </button>
 
             {message && <p className={styles.message}>{message}</p>}
-        </form>
+        </form >
     );
 }

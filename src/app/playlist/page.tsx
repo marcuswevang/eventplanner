@@ -5,7 +5,11 @@ import { ChevronLeft, Music, PlusCircle } from "lucide-react";
 import PlaylistClient from "./PlaylistClient";
 
 export default async function PlaylistPage() {
+    const event = await prisma.event.findFirst();
+    if (!event) return <div>Arrangement ikke funnet.</div>;
+
     const requests = await prisma.songRequest.findMany({
+        where: { eventId: event.id },
         orderBy: { createdAt: "desc" },
     });
 
@@ -33,7 +37,7 @@ export default async function PlaylistPage() {
                 <section className={styles.content}>
                     <div className={`${styles.formCard} glass`}>
                         <h3>Legg til sang</h3>
-                        <PlaylistClient />
+                        <PlaylistClient eventId={event.id} />
                     </div>
 
                     <div className={`${styles.listCard} glass`}>

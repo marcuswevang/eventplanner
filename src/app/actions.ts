@@ -138,7 +138,7 @@ async function managePartnerLinks(tx: any, guestId: string, newPartnerId: string
     }
 }
 
-export async function addGuest(eventId: string, name: string, type: "DINNER" | "PARTY", allergies: string = "", rsvpStatus: "PENDING" | "ACCEPTED" | "DECLINED" = "PENDING", tableId: string | null = null, partnerId: string | null = null, mobile: string = "", address: string = "", role: string = "") {
+export async function addGuest(eventId: string, name: string, type: "DINNER" | "PARTY", allergies: string = "", rsvpStatus: "PENDING" | "ACCEPTED" | "DECLINED" = "PENDING", tableId: string | null = null, partnerId: string | null = null, mobile: string = "", address: string = "", role: string = "", notes: string = "", invitationSent: boolean = false) {
     try {
         await prisma.$transaction(async (tx: any) => {
             const newGuest = await tx.guest.create({
@@ -151,7 +151,9 @@ export async function addGuest(eventId: string, name: string, type: "DINNER" | "
                     mobile,
                     address,
                     role,
-                    ...(tableId ? { table: { connect: { id: tableId } } } : {}),
+                    notes,
+                    invitationSent,
+                    tableId,
                 },
             });
             await managePartnerLinks(tx, newGuest.id, partnerId);
@@ -179,7 +181,7 @@ export async function deleteGuest(guestId: string) {
     }
 }
 
-export async function updateGuest(guestId: string, data: { name: string, type: "DINNER" | "PARTY", allergies: string, rsvpStatus: "PENDING" | "ACCEPTED" | "DECLINED", tableId?: string | null, partnerId?: string | null, mobile?: string, address?: string, role?: string }) {
+export async function updateGuest(guestId: string, data: { name: string, type: "DINNER" | "PARTY", allergies: string, rsvpStatus: "PENDING" | "ACCEPTED" | "DECLINED", tableId?: string | null, partnerId?: string | null, mobile?: string, address?: string, role?: string, notes?: string, invitationSent?: boolean }) {
     try {
         await prisma.$transaction(async (tx: any) => {
             const { partnerId, ...rest } = data;
@@ -311,30 +313,36 @@ export async function updateTable(tableId: string, data: any) {
 
 // --- Budget Actions ---
 
-export async function createBudgetItem(eventId: string, description: string, category: string, estimatedCost: number) {
+export async function createBudgetItem(eventId: string, description: string, category: string, estimatedCost: number, isPaid: boolean = false) {
     try {
         await prisma.budgetItem.create({
             data: {
                 eventId,
                 description,
                 category,
-                estimatedCost
+                estimatedCost,
+                actualCost: isPaid ? estimatedCost : null,
+                isPaid
             }
         });
         revalidatePath("/admin");
+        revalidatePath("/", "layout");
+        revalidatePath("/admin/budget");
         return { success: true };
     } catch (error) {
         return { error: "Kunne ikke opprette budsjettpost." };
     }
 }
 
-export async function updateBudgetItem(itemId: string, data: { description?: string, estimatedCost?: number, actualCost?: number, isPaid?: boolean }) {
+export async function updateBudgetItem(itemId: string, data: { description?: string, category?: string, estimatedCost?: number, actualCost?: number | null, isPaid?: boolean }) {
     try {
         await prisma.budgetItem.update({
             where: { id: itemId },
             data
         });
         revalidatePath("/admin");
+        revalidatePath("/", "layout");
+        revalidatePath("/admin/budget");
         return { success: true };
     } catch (error) {
         return { error: "Kunne ikke oppdatere budsjettpost." };
@@ -345,8 +353,83 @@ export async function deleteBudgetItem(itemId: string) {
     try {
         await prisma.budgetItem.delete({ where: { id: itemId } });
         revalidatePath("/admin");
+        revalidatePath("/", "layout");
+        revalidatePath("/admin/budget");
         return { success: true };
-    } catch (error) {
+    } catch (error: any) {
+        console.error("Error deleting budget item:", error);
         return { error: "Kunne ikke slette budsjettpost." };
+    }
+}
+
+export async function updateEventSettings(eventId: string, data: { budgetGoal?: number, config?: any, eventSettings?: any }) {
+    try {
+        const updateData: any = {};
+
+        if (data.eventSettings !== undefined) {
+            updateData.settings = data.eventSettings;
+        }
+
+        if (data.budgetGoal !== undefined) {
+            updateData.budgetGoal = Number(data.budgetGoal);
+        }
+
+        if (data.config !== undefined) {
+            updateData.config = data.config;
+        }
+
+        await prisma.event.update({
+            where: { id: eventId },
+            data: updateData
+        });
+
+        revalidatePath("/admin");
+        revalidatePath("/", "layout");
+        revalidatePath("/admin/budget");
+        return { success: true };
+    } catch (error: any) {
+        console.error("Error updating event settings for eventId:", eventId, error);
+        return { error: `Kunne ikke oppdatere innstillinger: ${error.message || 'Ukjent feil'}` };
+    }
+}
+import * as XLSX from 'xlsx';
+
+export async function exportGuestsAction(eventId: string) {
+    try {
+        const guests = await prisma.guest.findMany({
+            where: { eventId },
+            include: {
+                table: true,
+                partner: true
+            }
+        });
+
+        // Generate Excel data
+        const rows = guests.map((g: any) => ({
+            "Navn": g.name,
+            "Status": g.rsvpStatus === 'ACCEPTED' ? 'Kommer' : g.rsvpStatus === 'DECLINED' ? 'Kan ikke' : 'Ikke svart',
+            "Type": g.type === 'DINNER' ? 'Middag & Fest' : 'Fest',
+            "Relasjon": g.role || "",
+            "Mobil": g.mobile || "",
+            "Allergier": g.allergies || "",
+            "Bord": g.table?.name || "",
+            "Partner": g.partner?.name || "",
+            "Adresse": g.address || "",
+            "Notater": g.notes || "",
+            "Invitasjon Levert": g.invitationSent ? "Ja" : "Nei"
+        }));
+
+        // Create workbook and worksheet
+        const worksheet = XLSX.utils.json_to_sheet(rows);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Gjester");
+
+        // Write to buffer then base64
+        const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+        const base64 = buffer.toString('base64');
+
+        return { success: true, excel: base64 };
+    } catch (error) {
+        return { error: "Kunne ikke eksportere gjesteliste." };
     }
 }
