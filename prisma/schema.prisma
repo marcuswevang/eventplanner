@@ -53,11 +53,25 @@ model User {
   password  String   // Hashed
   name      String?
   role      UserRole @default(CUSTOMER)
+  isActivated Boolean @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  mobile    String?
+  lastLogin DateTime?
 
   events    Event[]  @relation("UserEvents")
+  resetTokens PasswordResetToken[]
 }
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  expires   DateTime
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
 
 model Event {
   id              String    @id @default(cuid())
@@ -66,17 +80,18 @@ model Event {
   type            EventType @default(WEDDING)
   date            DateTime
   guestPassword   String?   // Shared password for guests
+  isActive        Boolean   @default(true) // Superadmin can toggle this
+  customDomain    String?   @unique // Optional custom domain mapping
+  budgetGoal      Float?    @default(0)
   
   // Settings (Json for flexibility)
-  // Contains: primaryHosts, subjectName, locations, etc.
   settings        Json?     
   
   // Config (Feature Toggles)
-  // Contains: budgetEnabled, wishlistEnabled, spotifyId, instagramHash, etc.
   config          Json?
-  budgetGoal      Float?    @default(0)
 
   createdAt       DateTime  @default(now())
+
   updatedAt       DateTime  @updatedAt
 
   // Relations
@@ -113,8 +128,10 @@ model Guest {
   partner    Guest?     @relation("GuestPartner", fields: [partnerId], references: [id])
   partnerOf  Guest?     @relation("GuestPartner")
   
+  hasSpeech  Boolean    @default(false)
   createdAt  DateTime   @default(now())
 }
+
 
 model Table {
   id        String     @id @default(cuid())

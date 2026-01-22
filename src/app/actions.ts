@@ -2,23 +2,235 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import bcrypt from "bcryptjs";
+import { auth } from "@/auth";
+import { cookies } from "next/headers";
+import * as XLSX from 'xlsx';
+
+// --- Auth Actions ---
+
+export async function registerUser(email: string, password: string, name: string) {
+    try {
+        const existingUser = await prisma.user.findUnique({
+            where: { email }
+        });
+
+        if (existingUser) {
+            return { error: "En bruker med denne e-postadressen eksisterer allerede." };
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        const user = await prisma.user.create({
+            data: {
+                email,
+                password: hashedPassword,
+                name,
+                role: "CUSTOMER",
+                isActivated: false
+            }
+        });
+
+        return { success: true, userId: user.id };
+    } catch (error) {
+        console.error("Error registering user:", error);
+        return { error: "Kunne ikke registrere bruker." };
+    }
+}
+
+export async function updateUserProfile(data: { name?: string, email?: string }) {
+    try {
+        const session = await auth();
+        if (!session?.user) return { error: "Ikke autorisert" };
+
+        const userId = (session.user as any).id;
+
+        await prisma.user.update({
+            where: { id: userId },
+            data: {
+                name: data.name,
+                email: data.email
+            }
+        });
+
+        revalidatePath("/settings");
+        revalidatePath("/admin");
+        return { success: true };
+    } catch (error: any) {
+        if (error.code === 'P2002') {
+            return { error: "E-postadressen er allerede i bruk." };
+        }
+        return { error: "Kunne ikke oppdatere profil." };
+    }
+}
+
+export async function updateUserPassword(data: { currentPassword?: string, newPassword?: string }) {
+    try {
+        const session = await auth();
+        if (!session?.user || !data.currentPassword || !data.newPassword) return { error: "Ugyldig forespørsel" };
+
+        const userId = (session.user as any).id;
+        const user = await prisma.user.findUnique({
+            where: { id: userId }
+        });
+
+        if (!user || !user.password) return { error: "Bruker ikke funnet" };
+
+        const isValid = await bcrypt.compare(data.currentPassword, user.password);
+        if (!isValid) return { error: "Nåværende passord er feil." };
+
+        const hashedPassword = await bcrypt.hash(data.newPassword, 10);
+        await prisma.user.update({
+            where: { id: userId },
+            data: { password: hashedPassword }
+        });
+
+        return { success: true };
+    } catch (error) {
+        return { error: "Kunne ikke oppdatere passord." };
+    }
+}
+
+export async function requestPasswordReset(email: string) {
+    try {
+        const user = await prisma.user.findUnique({
+            where: { email }
+        });
+
+        if (!user) {
+            // We return success even if user not found for security reasons
+            return { success: true };
+        }
+
+        const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        const expires = new Date(Date.now() + 3600000); // 1 hour
+
+        await prisma.passwordResetToken.create({
+            data: {
+                token,
+                expires,
+                userId: user.id
+            }
+        });
+
+        // In a real app, we would send an email here.
+        console.log(`Password reset token for ${email}: ${token}`);
+        console.log(`Reset link: http://localhost:3000/reset-password?token=${token}`);
+
+        return { success: true };
+    } catch (error) {
+        console.error("Error requesting reset:", error);
+        return { error: "Kunne ikke be om passordgjenoppretting." };
+    }
+}
+
+export async function resetPassword(token: string, newPassword: string) {
+    try {
+        const resetToken = await prisma.passwordResetToken.findUnique({
+            where: { token },
+            include: { user: true }
+        });
+
+        if (!resetToken || resetToken.expires < new Date()) {
+            return { error: "Ugyldig eller utløpt kode." };
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        await prisma.$transaction([
+            prisma.user.update({
+                where: { id: resetToken.userId },
+                data: { password: hashedPassword }
+            }),
+            prisma.passwordResetToken.delete({
+                where: { id: resetToken.id }
+            })
+        ]);
+
+        return { success: true };
+    } catch (error) {
+        console.error("Error resetting password:", error);
+        return { error: "Kunne ikke nullstille passord." };
+    }
+}
+
+export async function getUserEvents(userId: string) {
+    try {
+        const session = await auth();
+        if (!session?.user) return { error: "Ikke autorisert" };
+
+        const currentUserId = (session.user as any).id;
+        const currentUserRole = (session.user as any).role;
+
+        // Allow if asking for self OR if superadmin
+        if (userId !== currentUserId && currentUserRole !== "SUPER_ADMIN") {
+            return { error: "Ikke autorisert" };
+        }
+
+        const events = await prisma.event.findMany({
+            where: {
+                users: {
+                    some: { id: userId }
+                }
+            },
+            orderBy: { date: "asc" }
+        });
+        return { events };
+    } catch (error) {
+        console.error("Error fetching user events:", error);
+        return { error: "Kunne ikke hente dine arrangementer." };
+    }
+}
 
 // --- Event & Settings Actions ---
 
-export async function createEvent(data: { name: string, type: "WEDDING" | "CHRISTENING" | "NAMING_CEREMONY" | "CONFIRMATION" | "JUBILEE" | "OTHER", date: Date, slug: string }) {
+export async function createEvent(data: {
+    name: string,
+    type: "WEDDING" | "CHRISTENING" | "NAMING_CEREMONY" | "CONFIRMATION" | "JUBILEE" | "OTHER",
+    date: Date,
+    slug: string,
+    config?: any,
+    initialGuests?: { name: string, role: string }[]
+}) {
     try {
+        const session = await auth();
+        if (!session?.user) {
+            return { error: "Du må være logget inn for å opprette et arrangement." };
+        }
+
+        const userId = (session.user as any).id;
+
         const event = await prisma.event.create({
             data: {
                 name: data.name,
                 type: data.type,
                 date: data.date,
-                slug: data.slug
+                slug: data.slug,
+                config: data.config || {},
+                users: {
+                    connect: { id: userId }
+                }
             }
         });
+
+        if (data.initialGuests && data.initialGuests.length > 0) {
+            await prisma.guest.createMany({
+                data: data.initialGuests.map(guest => ({
+                    eventId: event.id,
+                    name: guest.name,
+                    role: guest.role,
+                    type: "DINNER", // Default to dinner guests for key roles
+                    rsvpStatus: "ACCEPTED",
+                    hasSpeech: guest.role === 'Toastmaster' || guest.role.includes('Forlover')
+                }))
+            });
+        }
+
+        revalidatePath("/admin");
         return { success: true, event };
     } catch (error) {
         console.error("Error creating event:", error);
-        return { error: "Kunne ikke opprette arrangement." };
+        return { error: "Kunne ikke opprette arrangement. Kanskje nettadressen allerede er i bruk?" };
     }
 }
 
@@ -153,7 +365,7 @@ export async function addGuest(eventId: string, name: string, type: "DINNER" | "
                     role,
                     notes,
                     invitationSent,
-                    tableId,
+                    ...(tableId ? { table: { connect: { id: tableId } } } : {}),
                 },
             });
             await managePartnerLinks(tx, newGuest.id, partnerId);
@@ -315,6 +527,9 @@ export async function updateTable(tableId: string, data: any) {
 
 export async function createBudgetItem(eventId: string, description: string, category: string, estimatedCost: number, isPaid: boolean = false) {
     try {
+        const session = await auth();
+        if (!session?.user) return { error: "Ikke autorisert" };
+
         await prisma.budgetItem.create({
             data: {
                 eventId,
@@ -336,6 +551,9 @@ export async function createBudgetItem(eventId: string, description: string, cat
 
 export async function updateBudgetItem(itemId: string, data: { description?: string, category?: string, estimatedCost?: number, actualCost?: number | null, isPaid?: boolean }) {
     try {
+        const session = await auth();
+        if (!session?.user) return { error: "Ikke autorisert" };
+
         await prisma.budgetItem.update({
             where: { id: itemId },
             data
@@ -351,6 +569,9 @@ export async function updateBudgetItem(itemId: string, data: { description?: str
 
 export async function deleteBudgetItem(itemId: string) {
     try {
+        const session = await auth();
+        if (!session?.user) return { error: "Ikke autorisert" };
+
         await prisma.budgetItem.delete({ where: { id: itemId } });
         revalidatePath("/admin");
         revalidatePath("/", "layout");
@@ -362,20 +583,100 @@ export async function deleteBudgetItem(itemId: string) {
     }
 }
 
-export async function updateEventSettings(eventId: string, data: { budgetGoal?: number, config?: any, eventSettings?: any }) {
+// --- Gallery Actions ---
+
+export async function addGalleryItem(eventId: string, url: string, caption: string = "", source: "UPLOAD" | "INSTAGRAM" = "UPLOAD", externalId: string | null = null) {
     try {
-        const updateData: any = {};
+        const item = await prisma.galleryItem.create({
+            data: {
+                eventId,
+                url,
+                caption,
+                source,
+                externalId
+            }
+        });
+        revalidatePath("/gallery");
+        revalidatePath("/admin/gallery");
+        return { success: true, item };
+    } catch (error) {
+        console.error("Error adding gallery item:", error);
+        return { error: "Kunne ikke legge til bilde." };
+    }
+}
+
+export async function deleteGalleryItem(itemId: string) {
+    try {
+        await prisma.galleryItem.delete({
+            where: { id: itemId }
+        });
+        revalidatePath("/gallery");
+        revalidatePath("/admin/gallery");
+        return { success: true };
+    } catch (error) {
+        console.error("Error deleting gallery item:", error);
+        return { error: "Kunne ikke slette bilde." };
+    }
+}
+
+// --- Protection Actions ---
+
+export async function verifyEventPassword(eventId: string, password: string) {
+    try {
+        const event = await prisma.event.findUnique({
+            where: { id: eventId },
+            select: { guestPassword: true }
+        });
+
+        if (!event || !event.guestPassword) {
+            return { success: true }; // No password needed
+        }
+
+        if (event.guestPassword === password) {
+            const cookieStore = await cookies();
+            cookieStore.set(`event_auth_${eventId}`, "true", {
+                maxAge: 60 * 60 * 24 * 7, // 1 week
+                httpOnly: true,
+                secure: process.env.NODE_ENV === "production",
+                sameSite: "lax"
+            });
+            return { success: true };
+        }
+
+        return { error: "Feil passord." };
+    } catch (error) {
+        return { error: "Noe gikk galt." };
+    }
+}
+
+export async function checkEventAuth(eventId: string) {
+    const event = await prisma.event.findUnique({
+        where: { id: eventId },
+        select: { guestPassword: true }
+    });
+
+    if (!event || !event.guestPassword) return true;
+
+    const cookieStore = await cookies();
+    return cookieStore.has(`event_auth_${eventId}`);
+}
+
+// --- Event Settings Migration ---
+
+export async function updateEventSettings(eventId: string, data: { name?: string, date?: Date, guestPassword?: string | null, budgetGoal?: number, config?: any, settings?: any, eventSettings?: any }) {
+    try {
+        const session = await auth();
+        if (!session?.user) return { error: "Ikke autorisert" };
+
+        const updateData: any = { ...data };
 
         if (data.eventSettings !== undefined) {
             updateData.settings = data.eventSettings;
+            delete updateData.eventSettings;
         }
 
-        if (data.budgetGoal !== undefined) {
-            updateData.budgetGoal = Number(data.budgetGoal);
-        }
-
-        if (data.config !== undefined) {
-            updateData.config = data.config;
+        if (updateData.budgetGoal !== undefined) {
+            updateData.budgetGoal = Number(updateData.budgetGoal);
         }
 
         await prisma.event.update({
@@ -386,13 +687,275 @@ export async function updateEventSettings(eventId: string, data: { budgetGoal?: 
         revalidatePath("/admin");
         revalidatePath("/", "layout");
         revalidatePath("/admin/budget");
+        revalidatePath("/");
         return { success: true };
     } catch (error: any) {
-        console.error("Error updating event settings for eventId:", eventId, error);
+        console.error("Error updating event settings:", error);
         return { error: `Kunne ikke oppdatere innstillinger: ${error.message || 'Ukjent feil'}` };
     }
 }
-import * as XLSX from 'xlsx';
+
+export async function addAdminToEvent(eventId: string, email: string, name: string = "", mobile: string = "") {
+    try {
+        const adminSession = await auth();
+        if (!adminSession?.user) return { error: "Ikke autorisert" };
+
+        let userToAdd = await prisma.user.findUnique({
+            where: { email }
+        });
+
+        let tempPassword = null;
+
+        if (!userToAdd) {
+            // Generate random password
+            tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
+            const hashedPassword = await bcrypt.hash(tempPassword, 10);
+
+            // Create the new user
+            userToAdd = await prisma.user.create({
+                data: {
+                    email,
+                    name: name || email.split('@')[0],
+                    mobile: mobile || null,
+                    password: hashedPassword,
+                    role: "CUSTOMER",
+                    isActivated: true
+                }
+            });
+        }
+
+        await prisma.event.update({
+            where: { id: eventId },
+            data: {
+                users: {
+                    connect: { id: userToAdd.id }
+                }
+            }
+        });
+
+        revalidatePath("/admin");
+
+        if (tempPassword) {
+            return { success: true, message: `Bruker opprettet! Midlertidig passord: ${tempPassword}` };
+        }
+
+        return { success: true, message: "Administrator lagt til." };
+    } catch (error) {
+        console.error("Error adding admin:", error);
+        return { error: "Kunne ikke legge til administrator." };
+    }
+}
+
+export async function regeneratePassword(email: string) {
+    try {
+        const adminSession = await auth();
+        if (!adminSession?.user) return { error: "Ikke autorisert" };
+
+        const tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
+        const hashedPassword = await bcrypt.hash(tempPassword, 10);
+
+        await prisma.user.update({
+            where: { email },
+            data: { password: hashedPassword }
+        });
+
+        return { success: true, message: `Nytt passord generert: ${tempPassword}` };
+    } catch (error) {
+        console.error("Error regenerating password:", error);
+        return { error: "Kunne ikke generere passord." };
+    }
+}
+
+// --- Superadmin Actions ---
+
+export async function getAllEvents() {
+    try {
+        const session = await auth();
+        if ((session?.user as any)?.role !== "SUPER_ADMIN") {
+            return { error: "Kunne ikke hente arrangementer: Tilgang nektet." };
+        }
+
+        const events = await prisma.event.findMany({
+            include: {
+                users: {
+                    select: { email: true, name: true }
+                },
+                _count: {
+                    select: { guests: true }
+                }
+            },
+            orderBy: { createdAt: "desc" }
+        });
+        return { events };
+    } catch (error) {
+        console.error("Error fetching all events:", error);
+        return { error: "Kunne ikke hente arrangementer." };
+    }
+}
+
+export async function toggleEventStatus(eventId: string, isActive: boolean) {
+    try {
+        const session = await auth();
+        if ((session?.user as any)?.role !== "SUPER_ADMIN") {
+            return { error: "Ikke autorisert" };
+        }
+
+        await prisma.event.update({
+            where: { id: eventId },
+            data: { isActive }
+        });
+
+        revalidatePath("/superadmin");
+        revalidatePath("/");
+        return { success: true };
+    } catch (error) {
+        return { error: "Kunne ikke oppdatere status." };
+    }
+}
+
+export async function updateEventSlugDomain(eventId: string, data: { slug?: string, customDomain?: string | null }) {
+    try {
+        const session = await auth();
+        if (!session?.user) return { error: "Ikke autorisert" };
+
+        const user = await prisma.user.findUnique({
+            where: { id: (session.user as any).id },
+            include: { events: { where: { id: eventId } } }
+        });
+
+        if (user?.role !== "SUPER_ADMIN" && user?.events.length === 0) {
+            return { error: "Du har ikke tilgang til å endre dette arrangementet." };
+        }
+
+        await prisma.event.update({
+            where: { id: eventId },
+            data
+        });
+
+        revalidatePath("/admin");
+        revalidatePath("/superadmin");
+        revalidatePath("/");
+        return { success: true };
+    } catch (error: any) {
+        if (error.code === 'P2002') {
+            return { error: "Nettadressen eller domenet er allerede i bruk." };
+        }
+        return { error: "Kunne ikke oppdatere innstillinger." };
+    }
+}
+
+export async function getPendingUsers() {
+    try {
+        const session = await auth();
+        if ((session?.user as any)?.role !== "SUPER_ADMIN") {
+            return { error: "Ikke autorisert" };
+        }
+
+        const users = await prisma.user.findMany({
+            where: { isActivated: false },
+            orderBy: { createdAt: "desc" }
+        });
+        return { users };
+    } catch (error) {
+        return { error: "Kunne ikke hente ventende brukere." };
+    }
+}
+
+export async function activateUser(userId: string) {
+    try {
+        const session = await auth();
+        if ((session?.user as any)?.role !== "SUPER_ADMIN") {
+            return { error: "Ikke autorisert" };
+        }
+
+        await prisma.user.update({
+            where: { id: userId },
+            data: { isActivated: true }
+        });
+
+        revalidatePath("/superadmin");
+        return { success: true };
+    } catch (error) {
+        return { error: "Kunne ikke aktivere bruker." };
+    }
+}
+
+export async function getAllUsers() {
+    try {
+        const session = await auth();
+        if ((session?.user as any)?.role !== "SUPER_ADMIN") {
+            return { error: "Ikke autorisert" };
+        }
+
+        const users = await prisma.user.findMany({
+            orderBy: { createdAt: "desc" },
+            include: {
+                events: {
+                    select: { name: true }
+                }
+            }
+        });
+        return { users };
+    } catch (error) {
+        return { error: "Kunne ikke hente brukere." };
+    }
+}
+
+export async function adminResetUserPassword(userId: string, newPassword: string) {
+    try {
+        const session = await auth();
+        if ((session?.user as any)?.role !== "SUPER_ADMIN") {
+            return { error: "Ikke autorisert" };
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        await prisma.user.update({
+            where: { id: userId },
+            data: { password: hashedPassword }
+        });
+
+        return { success: true };
+    } catch (error) {
+        console.error("Error admin resetting password:", error);
+        return { error: "Kunne ikke nullstille passord." };
+    }
+}
+
+export async function setSuperAdmin(email: string) {
+    try {
+        await prisma.user.update({
+            where: { email },
+            data: {
+                role: "SUPER_ADMIN",
+                isActivated: true
+            }
+        });
+        return { success: true };
+    } catch (error) {
+        console.error("Error setting superadmin:", error);
+        return { error: "Kunne ikke sette superadmin." };
+    }
+}
+
+export async function adminPromoteToSuperAdmin(userId: string) {
+    try {
+        const session = await auth();
+        if ((session?.user as any)?.role !== "SUPER_ADMIN") {
+            return { error: "Ikke autorisert" };
+        }
+
+        await prisma.user.update({
+            where: { id: userId },
+            data: { role: "SUPER_ADMIN" }
+        });
+        return { success: true };
+    } catch (error) {
+        return { error: "Kunne ikke oppgradere bruker." };
+    }
+}
+
+// --- Export Actions ---
 
 export async function exportGuestsAction(eventId: string) {
     try {
@@ -404,7 +967,6 @@ export async function exportGuestsAction(eventId: string) {
             }
         });
 
-        // Generate Excel data
         const rows = guests.map((g: any) => ({
             "Navn": g.name,
             "Status": g.rsvpStatus === 'ACCEPTED' ? 'Kommer' : g.rsvpStatus === 'DECLINED' ? 'Kan ikke' : 'Ikke svart',
@@ -419,17 +981,16 @@ export async function exportGuestsAction(eventId: string) {
             "Invitasjon Levert": g.invitationSent ? "Ja" : "Nei"
         }));
 
-        // Create workbook and worksheet
         const worksheet = XLSX.utils.json_to_sheet(rows);
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Gjester");
 
-        // Write to buffer then base64
         const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
         const base64 = buffer.toString('base64');
 
         return { success: true, excel: base64 };
     } catch (error) {
+        console.error("Error exporting guests:", error);
         return { error: "Kunne ikke eksportere gjesteliste." };
     }
 }

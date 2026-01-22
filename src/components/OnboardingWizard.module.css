@@ -1,0 +1,245 @@
+.container {
+    max-width: 600px;
+    margin: 4rem auto;
+    padding: 0 1.5rem;
+}
+
+.progress {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 3rem;
+    position: relative;
+}
+
+.progress::before {
+    content: "";
+    position: absolute;
+    top: 18px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--glass-border);
+    z-index: 0;
+}
+
+.stepIndicator {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    flex: 1;
+}
+
+.indicatorCircle {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--card-bg);
+    /* Use card background for better contrast */
+    border: 2px solid var(--text-muted);
+    /* Darker border for visibility */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    color: var(--text-muted);
+    transition: all 0.3s ease;
+    z-index: 2;
+    /* Ensure above line */
+}
+
+.stepIndicator.active .indicatorCircle {
+    background: var(--accent-gold);
+    border-color: var(--accent-gold);
+    color: white;
+    /* White text on gold background */
+    box-shadow: 0 0 15px rgba(212, 175, 55, 0.4);
+    transform: scale(1.1);
+}
+
+.indicatorLabel {
+    font-size: 0.8rem;
+    font-weight: 600;
+    /* Bolder text */
+    color: var(--text-muted);
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.stepIndicator.active .indicatorLabel {
+    color: var(--accent-gold);
+    /* Gold text for active active */
+}
+
+.card {
+    padding: 3rem;
+    animation: scaleUp 0.4s ease-out;
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+}
+
+.mainIcon {
+    color: var(--accent-gold);
+    margin-bottom: 1rem;
+}
+
+.header h2 {
+    font-size: 1.75rem;
+    font-family: var(--font-fancy);
+}
+
+.typeGrid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+}
+
+.typeButton {
+    display: flex;
+    flex-direction: column;
+    padding: 1.25rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+}
+
+.typeButton:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--accent-gold-transparent);
+}
+
+.typeButton.activeType {
+    background: rgba(212, 175, 55, 0.1);
+    border-color: var(--accent-gold);
+}
+
+.typeLabel {
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: var(--text-main);
+    margin-bottom: 0.25rem;
+}
+
+.typeDesc {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.formGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.field label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+}
+
+.field input {
+    width: 100%;
+    padding: 0.8rem 1rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    color: var(--text-main);
+    font-size: 1rem;
+}
+
+.slugInputWrapper {
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.domain {
+    padding: 0 1rem;
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.05);
+    height: 100%;
+    display: flex;
+    align-items: center;
+    font-size: 0.9rem;
+}
+
+.slugInputWrapper input {
+    border: none;
+    background: transparent;
+    padding: 0.8rem 1rem;
+}
+
+.hint {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 0.5rem;
+}
+
+.actions {
+    margin-top: 3rem;
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.backButton {
+    padding: 0.8rem 1.5rem;
+    background: transparent;
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+.nextButton {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 0.8rem 1.5rem;
+    background: var(--accent-gold);
+    border: none;
+    border-radius: 12px;
+    color: var(--bg-main);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.nextButton:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.error {
+    color: #ff4444;
+    font-size: 0.9rem;
+    margin-top: 1rem;
+    text-align: center;
+}
+
+@keyframes scaleUp {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}

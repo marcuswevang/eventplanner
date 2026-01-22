@@ -4,6 +4,8 @@ import Link from "next/link";
 import { ChevronLeft, Music, PlusCircle } from "lucide-react";
 import PlaylistClient from "./PlaylistClient";
 
+export const dynamic = 'force-dynamic';
+
 export default async function PlaylistPage() {
     const event = await prisma.event.findFirst();
     if (!event) return <div>Arrangement ikke funnet.</div>;

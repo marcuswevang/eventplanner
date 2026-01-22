@@ -4,6 +4,8 @@ import Link from "next/link";
 import { ChevronLeft, Gift, CheckCircle2 } from "lucide-react";
 import WishlistClient from "./WishlistClient";
 
+export const dynamic = 'force-dynamic';
+
 export default async function WishlistPage() {
     const items = await prisma.wishlistItem.findMany({
         orderBy: { createdAt: "asc" },

@@ -5,6 +5,8 @@ import MapPopover from "@/components/MapPopover";
 import { prisma } from "@/lib/prisma";
 import { ICON_LIBRARY } from "@/components/IconPicker";
 
+export const dynamic = 'force-dynamic';
+
 const DEFAULT_SETTINGS = {
     title: "Marita & Marcus",
     intro: "Velkommen til middag. Vi gleder oss stort til å dele denne dagen med dere.",

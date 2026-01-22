@@ -2,29 +2,51 @@
 
 import { useState, useEffect, useRef } from "react";
 import styles from "@/app/admin/admin.module.css";
-import { Users, LayoutDashboard, Utensils, Gift, Trash2, Martini, Pencil, WheatOff, MilkOff, Vegan, EggOff, PlusCircle, Circle, Square, RectangleHorizontal, Check, X, StretchHorizontal, CheckSquare, Lock, Unlock, FileUp, FileDown, DollarSign, Menu, Crown, UserRound, Star, Sparkles, Mic2, UtensilsCrossed, Heart } from "lucide-react";
+import { Users, LayoutDashboard, Utensils, Gift, Trash2, Martini, Pencil, WheatOff, MilkOff, Vegan, EggOff, PlusCircle, Circle, Square, RectangleHorizontal, Check, X, StretchHorizontal, CheckSquare, Lock, Unlock, FileUp, FileDown, DollarSign, Menu, Crown, UserRound, Star, Sparkles, Mic2, UtensilsCrossed, Heart, Camera, Settings, Wallet } from "lucide-react";
 import AdminWishlistForm from "@/components/AdminWishlistForm";
 import AdminGuestForm from "@/components/AdminGuestForm";
 import BudgetManager from "@/components/BudgetManager";
 import AdminSettings from "@/components/AdminSettings";
-import { deleteGuest, deleteWishlistItem, createTable, deleteTable, updateTable, batchCreateTables, deleteTables, importGuests, exportGuestsAction, updateEventSettings } from "@/app/actions";
+import GalleryUploader from "@/components/GalleryUploader";
+import AdminSidebar from "@/components/AdminSidebar";
+import ConfirmationModal from "@/components/ConfirmationModal";
+import Modal from "@/components/Modal";
+import { deleteGuest, deleteWishlistItem, createTable, deleteTable, updateTable, batchCreateTables, deleteTables, importGuests, exportGuestsAction, deleteGalleryItem, updateEventSettings } from "@/app/actions";
 
 interface AdminDashboardProps {
     eventId: string;
+    userId: string;
     guests: any[];
     items: any[];
     songs: any[];
     tables: any[];
+    galleryItems: any[];
     budgetItems: any[];
     budgetGoal: number;
     config?: any;
     eventSettings?: any;
+    event?: any;
+    initialTab?: Tab;
 }
 
-type Tab = 'dashboard' | 'wishlist' | 'guests' | 'tables' | 'map' | 'budget' | 'settings';
+type Tab = 'dashboard' | 'wishlist' | 'guests' | 'tables' | 'map' | 'budget' | 'gallery' | 'settings';
 
-export default function AdminDashboard({ eventId, guests, items, songs, tables, budgetItems, budgetGoal, config, eventSettings }: AdminDashboardProps) {
-    const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+export default function AdminDashboard({
+    eventId,
+    userId,
+    guests,
+    items,
+    songs,
+    tables,
+    galleryItems,
+    budgetItems,
+    budgetGoal,
+    config,
+    eventSettings,
+    event,
+    initialTab = 'dashboard'
+}: AdminDashboardProps) {
+    const [activeTab, setActiveTab] = useState<Tab>(initialTab);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [editingGuest, setEditingGuest] = useState<any>(null);
     const [newTableName, setNewTableName] = useState("");
@@ -45,6 +67,26 @@ export default function AdminDashboard({ eventId, guests, items, songs, tables, 
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState<"ALL" | "ACCEPTED" | "DECLINED" | "PENDING">("ALL");
 
+    // Confirmation Modal State
+    const [confirmModal, setConfirmModal] = useState({
+        isOpen: false,
+        title: "",
+        message: "",
+        onConfirm: () => { }
+    });
+
+    const openConfirm = (title: string, message: string, onConfirm: () => void) => {
+        setConfirmModal({
+            isOpen: true,
+            title,
+            message,
+            onConfirm: () => {
+                onConfirm();
+                setConfirmModal(prev => ({ ...prev, isOpen: false }));
+            }
+        });
+    };
+
     useEffect(() => {
         setLocalTables(tables);
         const positions: any = {};
@@ -56,10 +98,14 @@ export default function AdminDashboard({ eventId, guests, items, songs, tables, 
     }, [tables]);
 
     const handleDeleteGuest = async (id: string, name: string) => {
-        if (confirm(`Er du sikker på at du vil slette "${name}"?`)) {
-            await deleteGuest(id);
-            if (editingGuest?.id === id) setEditingGuest(null);
-        }
+        openConfirm(
+            "Slett gjest",
+            `Er du sikker på at du vil slette "${name}"?`,
+            async () => {
+                await deleteGuest(id);
+                if (editingGuest?.id === id) setEditingGuest(null);
+            }
+        );
     };
 
     const handleCreateTable = async (e: React.FormEvent) => {
@@ -83,8 +129,6 @@ export default function AdminDashboard({ eventId, guests, items, songs, tables, 
             }
         } else {
             if (newTableCount > 1) {
-                // Batch creation
-                // Extract number if present
                 const match = newTableName.match(/^(.*?)(\d+)$/);
                 let prefix = newTableName.trim();
                 let startNumber = 1;
@@ -112,36 +156,29 @@ export default function AdminDashboard({ eventId, guests, items, songs, tables, 
         }
     };
 
-    const startEditingTable = (table: any) => {
-        setEditingTable(table);
-        setNewTableName(table.name);
-        setNewTableCapacity(table.capacity);
-        setNewTableShape(table.shape);
-        setNewTableCount(1);
-    };
-
-    const cancelEditTable = () => {
-        setEditingTable(null);
-        setNewTableName("");
-        setNewTableCapacity(8);
-        setNewTableShape("ROUND");
-        setNewTableCount(1);
-    };
     const handleDeleteTable = async (id: string) => {
-        if (confirm("Er du sikker på at du vil slette dette bordet?")) {
-            await deleteTable(id);
-        }
+        openConfirm(
+            "Slett bord",
+            "Er du sikker på at du vil slette dette bordet?",
+            async () => {
+                await deleteTable(id);
+            }
+        );
     };
 
     const handleDeleteWishlist = async (id: string, title: string) => {
-        if (confirm(`Er du sikker på at du vil slette "${title}"?`)) {
-            await deleteWishlistItem(id);
-        }
+        openConfirm(
+            "Slett ønske",
+            `Er du sikker på at du vil slette "${title}"?`,
+            async () => {
+                await deleteWishlistItem(id);
+            }
+        );
     };
 
     const handleMouseDown = (e: React.MouseEvent, tableId: string) => {
         if (activeTab !== 'map') return;
-        const rect = (e.target as HTMLElement).getBoundingClientRect();
+        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
         dragOffset.current = {
             x: e.clientX - rect.left,
             y: e.clientY - rect.top
@@ -163,9 +200,7 @@ export default function AdminDashboard({ eventId, guests, items, songs, tables, 
         const deltaX = x - oldPos.x;
         const deltaY = y - oldPos.y;
 
-        // If dragging a selected table, move all selected tables
         const idsToMove = selectedTableIds.includes(draggingId) ? selectedTableIds : [draggingId];
-
         const newTablePositions = { ...tablePositionsRef.current };
 
         idsToMove.forEach(id => {
@@ -187,7 +222,6 @@ export default function AdminDashboard({ eventId, guests, items, songs, tables, 
         if (draggingId) {
             const idsToMove = selectedTableIds.includes(draggingId) ? selectedTableIds : [draggingId];
 
-            // Optimistically update localTables state
             setLocalTables(prev => prev.map(t => {
                 const pos = tablePositionsRef.current[t.id];
                 if (idsToMove.includes(t.id) && pos) {
@@ -196,7 +230,6 @@ export default function AdminDashboard({ eventId, guests, items, songs, tables, 
                 return t;
             }));
 
-            // Persist all moved tables
             const promises = idsToMove.map(id => {
                 const pos = tablePositionsRef.current[id];
                 if (pos) {
@@ -212,73 +245,21 @@ export default function AdminDashboard({ eventId, guests, items, songs, tables, 
 
     return (
         <div className={styles.container}>
-            {/* Mobile Header */}
-            <div className="mobileOnlyHeader">
-                <button
-                    onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                    style={{ background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}
-                >
-                    <Menu size={24} />
-                </button>
-                <div style={{ fontVariant: 'small-caps', fontWeight: 700, fontSize: '1.2rem', color: 'var(--accent-gold)' }}>
-                    Admin
-                </div>
-            </div>
+            <ConfirmationModal
+                isOpen={confirmModal.isOpen}
+                title={confirmModal.title}
+                message={confirmModal.message}
+                onConfirm={confirmModal.onConfirm}
+                onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+            />
 
-            <aside className={`${styles.sidebar} ${isSidebarOpen ? styles.mobileOpen : ''}`}>
-                <div className={styles.logo}>Admin-konsoll</div>
-                <nav className={styles.nav}>
-                    <button
-                        onClick={() => { setActiveTab('dashboard'); setIsSidebarOpen(false); }}
-                        className={`${styles.navItem} ${activeTab === 'dashboard' ? styles.active : ''}`}
-                    >
-                        <LayoutDashboard size={20} />
-                        <span>Dashboard</span>
-                    </button>
-                    <button
-                        onClick={() => { setActiveTab('wishlist'); setIsSidebarOpen(false); }}
-                        className={`${styles.navItem} ${activeTab === 'wishlist' ? styles.active : ''}`}
-                    >
-                        <Gift size={20} />
-                        <span>Ønskeliste</span>
-                    </button>
-                    <button
-                        onClick={() => { setActiveTab('guests'); setIsSidebarOpen(false); }}
-                        className={`${styles.navItem} ${activeTab === 'guests' ? styles.active : ''}`}
-                    >
-                        <Users size={20} />
-                        <span>Gjester</span>
-                    </button>
-                    <button
-                        onClick={() => { setActiveTab('tables'); setIsSidebarOpen(false); }}
-                        className={`${styles.navItem} ${activeTab === 'tables' ? styles.active : ''}`}
-                    >
-                        <Utensils size={20} />
-                        <span>Bordliste</span>
-                    </button>
-                    <button
-                        onClick={() => { setActiveTab('map'); setIsSidebarOpen(false); }}
-                        className={`${styles.navItem} ${activeTab === 'map' ? styles.active : ''}`}
-                    >
-                        <LayoutDashboard size={20} />
-                        <span>Bordoversikt</span>
-                    </button>
-                    <button
-                        onClick={() => { setActiveTab('budget'); setIsSidebarOpen(false); }}
-                        className={`${styles.navItem} ${activeTab === 'budget' ? styles.active : ''}`}
-                    >
-                        <DollarSign size={20} />
-                        <span>Budsjett</span>
-                    </button>
-                    <button
-                        onClick={() => { setActiveTab('settings'); setIsSidebarOpen(false); }}
-                        className={`${styles.navItem} ${activeTab === 'settings' ? styles.active : ''}`}
-                    >
-                        <PlusCircle size={20} />
-                        <span>Innstillinger</span>
-                    </button>
-                </nav>
-            </aside>
+            <AdminSidebar
+                eventId={eventId}
+                userId={userId}
+                activeTab={activeTab}
+                onTabChange={(tab) => setActiveTab(tab as Tab)}
+                config={config}
+            />
 
             <main className={styles.main}>
                 {activeTab === 'dashboard' && (
@@ -312,12 +293,12 @@ export default function AdminDashboard({ eventId, guests, items, songs, tables, 
                                 </p>
                             </button>
                             <button
-                                onClick={() => setActiveTab('dashboard')} // Stay here or add a specific songs tab if needed
+                                onClick={() => setActiveTab('gallery')}
                                 className={`${styles.statCard} glass`}
                                 style={{ cursor: 'pointer', border: 'none', background: 'rgba(255,255,255,0.03)', width: '100%' }}
                             >
-                                <h3>Sanger i kø</h3>
-                                <p className={styles.statValue}>{songs.length}</p>
+                                <h3>Bilder i galleri</h3>
+                                <p className={styles.statValue}>{galleryItems.length}</p>
                             </button>
                             <button
                                 onClick={() => setActiveTab('budget')}
@@ -332,6 +313,52 @@ export default function AdminDashboard({ eventId, guests, items, songs, tables, 
                             </button>
                         </section>
                     </>
+                )}
+
+                {activeTab === 'gallery' && (
+                    <section className={styles.wishlistSection}>
+                        <header className={styles.header}>
+                            <h1>Bildegalleri</h1>
+                        </header>
+                        <GalleryUploader eventId={eventId} />
+
+                        <div style={{ marginTop: '3rem' }}>
+                            <h2 style={{ marginBottom: '1.5rem' }}>Opplastede bilder</h2>
+                            <div className={styles.tableGrid}>
+                                {galleryItems.map((item: any) => (
+                                    <div key={item.id} className={`${styles.tableCard} glass`} style={{ position: 'relative', padding: '0.5rem' }}>
+                                        <button
+                                            onClick={() => openConfirm("Slett bilde", "Er du sikker på at du vil slette dette bildet?", () => deleteGalleryItem(item.id))}
+                                            style={{
+                                                position: 'absolute',
+                                                top: '1rem',
+                                                right: '1rem',
+                                                background: 'rgba(0,0,0,0.5)',
+                                                border: 'none',
+                                                color: '#ff4444',
+                                                cursor: 'pointer',
+                                                padding: '0.5rem',
+                                                borderRadius: '50%',
+                                                zIndex: 1
+                                            }}
+                                        >
+                                            <Trash2 size={18} />
+                                        </button>
+                                        <img
+                                            src={item.url}
+                                            alt={item.caption || "Bilde"}
+                                            style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: '8px' }}
+                                        />
+                                        {item.caption && (
+                                            <p style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+                                                {item.caption}
+                                            </p>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </section>
                 )}
 
                 {activeTab === 'budget' && (
@@ -547,7 +574,6 @@ export default function AdminDashboard({ eventId, guests, items, songs, tables, 
                                     <p className={styles.empty}>Ingen gjester registrert.</p>
                                 ) : (
                                     <div className={`${styles.tableCard} glass`} style={{ gridColumn: '1 / -1', overflowX: 'auto' }}>
-                                        {/* Search and Filters inside Card */}
                                         <div style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                                             <div style={{ position: 'relative', flex: 1, minWidth: '200px' }}>
                                                 <input
@@ -605,14 +631,6 @@ export default function AdminDashboard({ eventId, guests, items, songs, tables, 
                                                                         return null;
                                                                     })()}
                                                                     <strong>{guest.name}</strong>
-                                                                    {guest.type === 'DINNER' ? (
-                                                                        <>
-                                                                            <Utensils size={14} style={{ color: 'var(--accent-gold)' }} />
-                                                                            <Martini size={14} style={{ color: 'var(--accent-gold)' }} />
-                                                                        </>
-                                                                    ) : (
-                                                                        <Martini size={14} style={{ color: 'var(--accent-gold)' }} />
-                                                                    )}
                                                                 </div>
                                                                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                                                                     <button
@@ -631,40 +649,10 @@ export default function AdminDashboard({ eventId, guests, items, songs, tables, 
                                                                     </button>
                                                                 </div>
                                                             </div>
-                                                            <div style={{ fontSize: '0.8rem', color: '#e67e22', display: 'flex', alignItems: 'center', gap: '0.3rem', flexWrap: 'wrap', minHeight: '1.2rem', marginBottom: '0.2rem' }}>
-                                                                {guest.allergies && (() => {
-                                                                    const parts = guest.allergies.split(/,\s*/);
-                                                                    const icons: React.ReactNode[] = [];
-                                                                    const text: string[] = [];
-
-                                                                    parts.forEach((part: string) => {
-                                                                        const p = part.trim();
-                                                                        if (p === 'Gluten') icons.push(<span key="gluten" title="Gluten" style={{ cursor: 'help' }}><WheatOff size={16} /></span>);
-                                                                        else if (p === 'Laktose') icons.push(<span key="laktose" title="Laktose" style={{ cursor: 'help' }}><MilkOff size={16} /></span>);
-                                                                        else if (p === 'Vegetar') icons.push(<span key="vegetar" title="Vegetar" style={{ cursor: 'help' }}><Vegan size={16} /></span>);
-                                                                        else if (p === 'Egg') icons.push(<span key="egg" title="Egg" style={{ cursor: 'help' }}><EggOff size={16} /></span>);
-                                                                        else if (p) text.push(p);
-                                                                    });
-
-                                                                    return (
-                                                                        <>
-                                                                            {icons}
-                                                                            {text.length > 0 && <span>{text.join(', ')}</span>}
-                                                                        </>
-                                                                    );
-                                                                })()}
+                                                            <div style={{ fontSize: '0.8rem', color: guest.rsvpStatus === 'ACCEPTED' ? 'var(--accent-green)' : guest.rsvpStatus === 'DECLINED' ? '#e74c3c' : 'var(--text-muted)' }}>
+                                                                {guest.rsvpStatus === 'ACCEPTED' ? '✅ Bekreftet' : guest.rsvpStatus === 'DECLINED' ? '❌ Kommer ikke' : '⏳ Venter svar'}
+                                                                {guest.role && <span> • {guest.role}</span>}
                                                             </div>
-                                                            <div style={{ fontSize: '0.8rem', color: guest.rsvpStatus === 'ACCEPTED' ? 'var(--accent-green)' : guest.rsvpStatus === 'DECLINED' ? '#e74c3c' : 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                                                <span>{guest.rsvpStatus === 'ACCEPTED' ? '✅ Bekreftet' : guest.rsvpStatus === 'DECLINED' ? '❌ Kommer ikke' : '⏳ Venter svar'}</span>
-                                                                {guest.role && (
-                                                                    !['Brud', 'Brudgom', 'Forlover (Brud)', 'Forlover (Brudgom)', 'Toastmaster', 'Takk for maten'].includes(guest.role) &&
-                                                                    <span style={{ color: 'var(--accent-gold)', fontWeight: 500 }}>• {guest.role}</span>
-                                                                )}
-                                                                {guest.mobile && <span style={{ color: 'var(--text-muted)' }}>• 📱 {guest.mobile}</span>}
-                                                                {guest.table && <span style={{ color: 'var(--text-muted)' }}>• Bord: {guest.table.name}</span>}
-                                                                {guest.partner && <span style={{ color: 'var(--text-muted)' }}>• Partner: {guest.partner.name}</span>}
-                                                            </div>
-                                                            {guest.address && <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px', marginLeft: '2px' }}>📍 {guest.address}</div>}
                                                         </li>
                                                     ))}
                                             </ul>
@@ -680,42 +668,15 @@ export default function AdminDashboard({ eventId, guests, items, songs, tables, 
                     <section className={styles.seating}>
                         <header className={styles.header}>
                             <h1>Bordliste</h1>
-                            <div style={{ display: 'flex', gap: '1rem' }}>
-                                {isSelectionMode && selectedTableIds.length > 0 && (
-                                    <button
-                                        onClick={async () => {
-                                            if (confirm(`Er du sikker på at du vil slette ${selectedTableIds.length} bord?`)) {
-                                                await deleteTables(selectedTableIds);
-                                                setSelectedTableIds([]);
-                                                setIsSelectionMode(false);
-                                            }
-                                        }}
-                                        style={{ color: '#ff4444', background: 'rgba(255, 68, 68, 0.1)', border: 'none', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}
-                                    >
-                                        Slett valgte ({selectedTableIds.length})
-                                    </button>
-                                )}
-                                <button
-                                    onClick={() => {
-                                        setIsSelectionMode(!isSelectionMode);
-                                        setSelectedTableIds([]);
-                                    }}
-                                    style={{ color: 'var(--text-main)', background: 'rgba(255, 255, 255, 0.1)', border: 'none', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-                                >
-                                    {isSelectionMode ? <X size={16} /> : <CheckSquare size={16} />}
-                                    {isSelectionMode ? 'Avbryt valg' : 'Velg flere'}
-                                </button>
-                            </div>
                         </header>
-
                         <form onSubmit={handleCreateTable} style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', marginBottom: '2rem', flexWrap: 'wrap' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
-                                <label style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Navn på bord {newTableCount > 1 ? '(Prefix - e.g "Bord")' : ''}</label>
+                                <label style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Navn på bord</label>
                                 <input
                                     type="text"
                                     value={newTableName}
                                     onChange={(e) => setNewTableName(e.target.value)}
-                                    placeholder={newTableCount > 1 ? "Eks: Bord" : "Eks: Bord 1"}
+                                    placeholder="Eks: Bord 1"
                                     style={{
                                         padding: '0.8rem',
                                         borderRadius: '8px',
@@ -726,375 +687,82 @@ export default function AdminDashboard({ eventId, guests, items, songs, tables, 
                                     }}
                                 />
                             </div>
-                            {!editingTable && (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '80px' }}>
-                                    <label style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Antall</label>
-                                    <input
-                                        type="number"
-                                        min="1"
-                                        max="20"
-                                        value={newTableCount}
-                                        onChange={(e) => setNewTableCount(parseInt(e.target.value) || 1)}
-                                        style={{
-                                            padding: '0.8rem',
-                                            borderRadius: '8px',
-                                            border: '1px solid var(--glass-border)',
-                                            background: 'rgba(255, 255, 255, 0.05)',
-                                            color: 'var(--text-main)',
-                                            width: '100%'
-                                        }}
-                                    />
-                                </div>
-                            )}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '80px' }}>
-                                <label style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Plasser</label>
-                                <input
-                                    type="number"
-                                    min="1"
-                                    value={newTableCapacity}
-                                    onChange={(e) => setNewTableCapacity(parseInt(e.target.value) || 1)}
-                                    style={{
-                                        padding: '0.8rem',
-                                        borderRadius: '8px',
-                                        border: '1px solid var(--glass-border)',
-                                        background: 'rgba(255, 255, 255, 0.05)',
-                                        color: 'var(--text-main)',
-                                        width: '100%'
-                                    }}
-                                />
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                <label style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Form</label>
-                                <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', padding: '4px', borderRadius: '8px' }}>
-                                    <button type="button" onClick={() => setNewTableShape("ROUND")} style={{ background: newTableShape === 'ROUND' ? 'var(--accent-gold)' : 'transparent', border: 'none', borderRadius: '4px', padding: '6px', cursor: 'pointer', color: newTableShape === 'ROUND' ? '#000' : 'var(--text-muted)' }} title="Rundt"><Circle size={20} /></button>
-                                    <button type="button" onClick={() => setNewTableShape("SQUARE")} style={{ background: newTableShape === 'SQUARE' ? 'var(--accent-gold)' : 'transparent', border: 'none', borderRadius: '4px', padding: '6px', cursor: 'pointer', color: newTableShape === 'SQUARE' ? '#000' : 'var(--text-muted)' }} title="Firkantet"><Square size={20} /></button>
-                                    <button type="button" onClick={() => setNewTableShape("RECTANGLE")} style={{ background: newTableShape === 'RECTANGLE' ? 'var(--accent-gold)' : 'transparent', border: 'none', borderRadius: '4px', padding: '6px', cursor: 'pointer', color: newTableShape === 'RECTANGLE' ? '#000' : 'var(--text-muted)' }} title="Rektangulært"><RectangleHorizontal size={20} /></button>
-                                    <button type="button" onClick={() => setNewTableShape("LONG")} style={{ background: newTableShape === 'LONG' ? 'var(--accent-gold)' : 'transparent', border: 'none', borderRadius: '4px', padding: '6px', cursor: 'pointer', color: newTableShape === 'LONG' ? '#000' : 'var(--text-muted)' }} title="Langbord (Hovedbord)"><StretchHorizontal size={20} /></button>
-                                </div>
-                            </div>
-
-                            {editingTable && (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                    <label style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Status</label>
-                                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', cursor: 'pointer', color: 'var(--text-main)' }}>
-                                            <input
-                                                type="checkbox"
-                                                checked={editingTable.isLocked || false}
-                                                onChange={async (e) => {
-                                                    const newLocked = e.target.checked;
-                                                    setEditingTable({ ...editingTable, isLocked: newLocked });
-                                                    // Also update immediate state for map view
-                                                    setTablePositions(prev => ({
-                                                        ...prev,
-                                                        [editingTable.id]: { ...prev[editingTable.id], isLocked: newLocked }
-                                                    }));
-                                                }}
-                                                style={{ accentColor: 'var(--accent-gold)' }}
-                                            />
-                                            Låst
-                                        </label>
-                                        <button
-                                            type="button"
-                                            onClick={async () => {
-                                                if (confirm("Vil du nullstille posisjonen til dette bordet?")) {
-                                                    await updateTable(editingTable.id, { x: 0, y: 0 });
-                                                    setTablePositions(prev => ({
-                                                        ...prev,
-                                                        [editingTable.id]: { ...prev[editingTable.id], x: 0, y: 0 }
-                                                    }));
-                                                    alert("Posisjon nullstilt!");
-                                                }
-                                            }}
-                                            style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textDecoration: 'underline', border: 'none', background: 'none', cursor: 'pointer' }}
-                                        >
-                                            Nullstill posisjon
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-
-                            <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                <button type="submit" style={{
-                                    padding: '0.8rem 1.5rem',
-                                    borderRadius: '8px',
-                                    border: 'none',
+                            <button
+                                type="submit"
+                                style={{
+                                    padding: '0.8rem 2rem',
                                     background: 'var(--accent-gold)',
+                                    border: 'none',
+                                    borderRadius: '8px',
                                     color: '#000',
                                     fontWeight: 600,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.5rem',
                                     cursor: 'pointer'
-                                }}>
-                                    {editingTable ? <Check size={20} /> : <PlusCircle size={20} />}
-                                    {editingTable ? "Lagre" : "Legg til"}
-                                </button>
-                                {editingTable && (
-                                    <button type="button" onClick={cancelEditTable} style={{
-                                        padding: '0.8rem',
-                                        borderRadius: '8px',
-                                        border: '1px solid var(--glass-border)',
-                                        background: 'transparent',
-                                        color: 'var(--text-muted)',
-                                        cursor: 'pointer'
-                                    }}>
-                                        <X size={20} />
-                                    </button>
-                                )}
-                            </div>
+                                }}
+                            >
+                                {editingTable ? "Oppdater" : "Opprett"}
+                            </button>
                         </form>
 
                         <div className={styles.tableGrid}>
-                            {localTables.length === 0 ? (
-                                <p className={styles.empty}>Ingen bord er definert ennå.</p>
-                            ) : (
-                                localTables.map((table: any) => (
-                                    <div
-                                        key={table.id}
-                                        className={`${styles.tableCard} glass`}
-                                        style={{
-                                            position: 'relative',
-                                            border: isSelectionMode && selectedTableIds.includes(table.id) ? '2px solid var(--accent-gold)' : '1px solid var(--glass-border)',
-                                            cursor: isSelectionMode ? 'pointer' : 'default',
-                                            transform: isSelectionMode && selectedTableIds.includes(table.id) ? 'scale(1.02)' : 'scale(1)',
-                                            transition: 'all 0.2s'
-                                        }}
-                                        onClick={() => {
-                                            if (isSelectionMode) {
-                                                if (selectedTableIds.includes(table.id)) {
-                                                    setSelectedTableIds(prev => prev.filter(id => id !== table.id));
-                                                } else {
-                                                    setSelectedTableIds(prev => [...prev, table.id]);
-                                                }
-                                            }
-                                        }}
-                                    >
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                {isSelectionMode && (
-                                                    <div style={{
-                                                        width: '20px',
-                                                        height: '20px',
-                                                        borderRadius: '4px',
-                                                        border: '2px solid var(--text-muted)',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        background: selectedTableIds.includes(table.id) ? 'var(--accent-gold)' : 'transparent',
-                                                        borderColor: selectedTableIds.includes(table.id) ? 'var(--accent-gold)' : 'var(--text-muted)'
-                                                    }}>
-                                                        {selectedTableIds.includes(table.id) && <Check size={14} color="#000" />}
-                                                    </div>
-                                                )}
-                                                {table.shape === 'SQUARE' ? <Square size={24} color="var(--accent-gold)" /> : table.shape === 'RECTANGLE' ? <RectangleHorizontal size={24} color="var(--accent-gold)" /> : table.shape === 'LONG' ? <StretchHorizontal size={24} color="var(--accent-gold)" /> : <Circle size={24} color="var(--accent-gold)" />}
-                                                <div>
-                                                    <h3>{table.name}</h3>
-                                                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Maks {table.capacity} pers</span>
-                                                </div>
-                                            </div>
-                                            {!isSelectionMode && (
-                                                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                                    <button
-                                                        onClick={() => {
-                                                            const currentPos = tablePositionsRef.current[table.id] || {};
-                                                            startEditingTable({ ...table, ...currentPos });
-                                                        }}
-                                                        style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '0.2rem' }}
-                                                        title="Rediger bord"
-                                                    >
-                                                        <Pencil size={16} />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleDeleteTable(table.id)}
-                                                        style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#ff4444', padding: '0.2rem' }}
-                                                        title="Slett bord"
-                                                    >
-                                                        <Trash2 size={16} />
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </div>
-                                        <ul className={styles.guestList}>
-                                            {table.guests.map((guest: any) => (
-                                                <li key={guest.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
-                                                    <span>{guest.name}</span>
-                                                    {guest.allergies && (
-                                                        <div style={{ display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
-                                                            {guest.allergies.includes('Gluten') && <span title="Gluten"><WheatOff size={14} color="#e67e22" /></span>}
-                                                            {guest.allergies.includes('Laktose') && <span title="Laktose"><MilkOff size={14} color="#e67e22" /></span>}
-                                                            {guest.allergies.includes('Vegetar') && <span title="Vegetar"><Vegan size={14} color="#4caf50" /></span>}
-                                                            {guest.allergies.includes('Egg') && <span title="Egg"><EggOff size={14} color="#e67e22" /></span>}
-                                                            {/* Show a small dot for other allergies if any remain after removing known ones */}
-                                                            {guest.allergies.split(',').some((a: string) => !['Gluten', 'Laktose', 'Vegetar', 'Egg'].includes(a.trim()) && a.trim() !== '') && (
-                                                                <span style={{ fontSize: '10px', color: '#e67e22', cursor: 'help', border: '1px solid #e67e22', borderRadius: '50%', width: '14px', height: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title={guest.allergies}>!</span>
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                        <div style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
-                                            <span>{table.guests.length} / {table.capacity}</span>
-                                            <span style={{ color: table.guests.length > table.capacity ? '#e74c3c' : table.guests.length === table.capacity ? 'var(--accent-green)' : 'var(--text-muted)' }}>
-                                                {table.guests.length > table.capacity ? 'Overbooket!' : table.guests.length === table.capacity ? 'Fullt' : 'Ledig'}
-                                            </span>
+                            {localTables.map(table => (
+                                <div key={table.id} className={`${styles.tableCard} glass`}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                        <h3 style={{ margin: 0 }}>{table.name}</h3>
+                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                            <button onClick={() => handleDeleteTable(table.id)} style={{ border: 'none', background: 'none', color: '#ff4444', cursor: 'pointer' }}><Trash2 size={16} /></button>
                                         </div>
                                     </div>
-                                ))
-                            )}
+                                    <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Kapasitet: {table.capacity}</p>
+                                </div>
+                            ))}
                         </div>
                     </section>
                 )}
 
                 {activeTab === 'map' && (
-                    <section className={styles.seating} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                        <header className={styles.header}>
+                    <section className={styles.seating} style={{ height: 'calc(100vh - 150px)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                        <header className={styles.header} style={{ marginBottom: '1rem' }}>
                             <h1>Bordoversikt</h1>
-                            <p style={{ color: 'var(--text-muted)' }}>Dra og slipp bordene for å organisere rommet. Dobbeltklikk for å rotere.</p>
+                            <p style={{ color: 'var(--text-muted)' }}>Dra og slipp bord for å planlegge lokalet.</p>
                         </header>
-
                         <div
-                            className="glass"
                             style={{
                                 flex: 1,
+                                background: 'rgba(255,255,255,0.03)',
+                                borderRadius: '12px',
                                 position: 'relative',
                                 overflow: 'auto',
-                                borderRadius: '16px',
-                                border: '1px solid var(--glass-border)',
-                                cursor: draggingId ? 'grabbing' : 'default'
+                                cursor: draggingId ? 'grabbing' : 'auto'
                             }}
                             onMouseMove={handleMouseMove}
                             onMouseUp={handleMouseUp}
                             onMouseLeave={handleMouseUp}
                         >
-                            <div style={{ minWidth: '100%', minHeight: '100%', width: '3000px', height: '2000px', position: 'relative' }}>
-                                {localTables.map((table: any) => {
-                                    const pos = tablePositions[table.id] || { x: 0, y: 0 };
-                                    const isRound = table.shape === 'ROUND';
-                                    const isRect = table.shape === 'RECTANGLE';
-                                    const isLong = table.shape === 'LONG';
-                                    const size = isLong ? { w: 300, h: 80 } : isRect ? { w: 160, h: 80 } : { w: 100, h: 100 };
-                                    const rotation = (pos as any).rotation ?? table.rotation ?? 0;
-                                    const isLocked = (pos as any).isLocked ?? table.isLocked ?? false;
-
-                                    return (
-                                        <div
-                                            key={table.id}
-                                            onMouseDown={(e) => {
-                                                if (!isLocked) handleMouseDown(e, table.id);
-                                            }}
-                                            onDoubleClick={async () => {
-                                                if (isLocked) return; // Prevent rotation if locked
-
-                                                // Read current rotation from ref to avoid closure staleness
-                                                const currentPos = tablePositionsRef.current[table.id] || {};
-                                                const currentRotation = (currentPos as any).rotation ?? table.rotation ?? 0;
-                                                const newRotation = (currentRotation + 45) % 360;
-
-                                                // Update local state immediately
-                                                const newPos = { ...currentPos, rotation: newRotation };
-
-                                                tablePositionsRef.current = {
-                                                    ...tablePositionsRef.current,
-                                                    [table.id]: newPos
-                                                };
-
-                                                setTablePositions(prev => ({
-                                                    ...prev,
-                                                    [table.id]: newPos
-                                                }));
-
-                                                setLocalTables(prev => prev.map(t =>
-                                                    t.id === table.id ? { ...t, rotation: newRotation } : t
-                                                ));
-
-                                                await updateTable(table.id, { rotation: newRotation });
-                                            }}
-                                            title={isLocked ? "Bordet er låst" : "Dobbeltklikk for å rotere, dra for å flytte"}
-                                            style={{
-                                                position: 'absolute',
-                                                left: pos.x,
-                                                top: pos.y,
-                                                width: size.w,
-                                                height: size.h,
-                                                borderRadius: isRound ? '50%' : '8px',
-                                                background: 'rgba(255, 255, 255, 0.1)',
-                                                backdropFilter: 'blur(10px)',
-                                                border: isLocked ? '1px dashed var(--text-muted)' : '1px solid var(--accent-gold)',
-                                                display: 'flex',
-                                                flexDirection: 'column',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                cursor: isLocked ? 'default' : 'grab',
-                                                userSelect: 'none',
-                                                zIndex: draggingId === table.id ? 10 : 1,
-                                                boxShadow: draggingId === table.id ? '0 10px 20px rgba(0,0,0,0.3)' : 'none',
-                                                transition: draggingId === table.id ? 'none' : 'box-shadow 0.2s, transform 0.3s',
-                                                color: 'var(--text-main)',
-                                                transform: `rotate(${rotation}deg)`
-                                            }}
-                                        >
-                                            {/* Lock Icon */}
-                                            <div
-                                                onMouseDown={(e) => e.stopPropagation()}
-                                                onDoubleClick={(e) => e.stopPropagation()}
-                                                onClick={async (e) => {
-                                                    e.stopPropagation();
-                                                    // Use current locked state from ref to avoid closure issues
-                                                    const currentPos = tablePositionsRef.current[table.id] || {};
-                                                    const currentLocked = (currentPos as any).isLocked ?? table.isLocked ?? false;
-                                                    const newLocked = !currentLocked;
-
-                                                    const newPos = { ...currentPos, isLocked: newLocked };
-                                                    tablePositionsRef.current = {
-                                                        ...tablePositionsRef.current,
-                                                        [table.id]: newPos
-                                                    };
-
-                                                    setTablePositions(prev => ({
-                                                        ...prev,
-                                                        [table.id]: newPos
-                                                    }));
-
-                                                    setLocalTables(prev => prev.map(t =>
-                                                        t.id === table.id ? { ...t, isLocked: newLocked } : t
-                                                    ));
-
-                                                    await updateTable(table.id, { isLocked: newLocked });
-                                                }}
-                                                title={isLocked ? "Lås opp" : "Lås bordet"}
-                                                style={{
-                                                    position: 'absolute',
-                                                    top: '-12px',
-                                                    right: '-12px',
-                                                    background: 'var(--background-main)',
-                                                    borderRadius: '50%',
-                                                    padding: '4px',
-                                                    border: '1px solid var(--glass-border)',
-                                                    cursor: 'pointer',
-                                                    zIndex: 20,
-                                                    transform: `rotate(${-rotation}deg)` // Keep icon upright
-                                                }}
-                                            >
-                                                {isLocked ? <Lock size={12} color="var(--text-muted)" /> : <Unlock size={12} color="var(--accent-gold)" />}
-                                            </div>
-
-                                            <div style={{ transform: `rotate(${-rotation}deg)`, display: 'flex', flexDirection: 'column', alignItems: 'center', pointerEvents: 'none' }}>
-                                                <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{table.name}</span>
-                                                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{table.guests.length}/{table.capacity}</span>
-                                            </div>
-                                            {isLong && (
-                                                <div style={{ position: 'absolute', bottom: '4px', left: 0, right: 0, display: 'flex', justifyContent: 'space-evenly', padding: '0 10px' }}>
-                                                    {Array.from({ length: Math.min(table.capacity, 15) }).map((_, i) => (
-                                                        <div key={i} style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'rgba(255,255,255,0.4)' }} />
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
+                            {localTables.map(table => (
+                                <div
+                                    key={table.id}
+                                    onMouseDown={(e) => handleMouseDown(e, table.id)}
+                                    style={{
+                                        position: 'absolute',
+                                        left: tablePositions[table.id]?.x || 0,
+                                        top: tablePositions[table.id]?.y || 0,
+                                        width: '100px',
+                                        height: '100px',
+                                        background: 'var(--accent-gold)',
+                                        color: '#000',
+                                        borderRadius: table.shape === 'ROUND' ? '50%' : '8px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        cursor: 'grab',
+                                        userSelect: 'none',
+                                        fontWeight: 700,
+                                        zIndex: draggingId === table.id ? 10 : 1
+                                    }}
+                                >
+                                    {table.name}
+                                </div>
+                            ))}
                         </div>
                     </section>
                 )}
@@ -1102,10 +770,13 @@ export default function AdminDashboard({ eventId, guests, items, songs, tables, 
                 {activeTab === 'settings' && (
                     <section className={styles.settingsSection}>
                         <header className={styles.header}>
-                            <h1>Sideinnstillinger</h1>
-                            <p style={{ color: 'var(--text-muted)' }}>Maksimal fleksibilitet: Endre tekster og ikoner på hele siden.</p>
+                            <h1>Innstillinger</h1>
                         </header>
-                        <AdminSettings eventId={eventId} initialEventSettings={eventSettings} guests={guests} />
+                        <AdminSettings
+                            eventId={eventId}
+                            initialEventSettings={eventSettings}
+                            guests={guests}
+                        />
                     </section>
                 )}
             </main>

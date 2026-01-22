@@ -4,6 +4,8 @@ import { ChevronLeft, User, Phone, MessageSquare, Instagram, Camera, Sparkles, G
 import { prisma } from "@/lib/prisma";
 import { formatNorwegianPhoneNumber } from "@/utils/format";
 
+export const dynamic = 'force-dynamic';
+
 const ROLE_ICONS: Record<string, any> = {
     "Toastmaster": Mic2,
     "Forlover (Brud)": Sparkles,
