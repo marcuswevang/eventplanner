@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import styles from "@/app/admin/admin.module.css";
-import { Users, LayoutDashboard, Utensils, Gift, Wallet, Camera, Settings, User, ChevronLeft, ChevronRight, FlaskConical } from "lucide-react";
+import { Users, LayoutDashboard, Utensils, Gift, Wallet, Camera, Settings, User, ChevronLeft, ChevronRight, FlaskConical, ShieldAlert } from "lucide-react";
 import Link from "next/link";
 import EventSwitcher from "@/components/EventSwitcher";
 
 interface AdminSidebarProps {
     eventId: string;
     userId?: string;
+    userRole?: string;
     activeTab?: string;
     onTabChange?: (tab: string) => void;
     config?: any;
@@ -18,6 +19,7 @@ interface AdminSidebarProps {
 export default function AdminSidebar({
     eventId,
     userId,
+    userRole,
     activeTab,
     onTabChange,
     config = {},
@@ -96,15 +98,18 @@ export default function AdminSidebar({
     };
 
     return (
-        <aside className={`${styles.sidebar} ${isCollapsed ? styles.collapsed : ''}`} style={{ width: isCollapsed ? '80px' : '250px', transition: 'width 0.3s ease' }}>
-
+        <aside
+            className={`${styles.sidebar} ${isCollapsed ? styles.collapsed : ''}`}
+            style={{ width: isCollapsed ? '80px' : '250px', transition: 'width 0.3s ease' }}
+            aria-label="Administrasjonsmeny"
+        >
             {!isCollapsed && userId && (
                 <div className={styles.switcherWrapper}>
                     <EventSwitcher currentEventId={eventId} userId={userId} />
                 </div>
             )}
 
-            <nav className={styles.nav}>
+            <nav className={styles.nav} aria-label="Hovednavigasjon">
                 <NavItem id="dashboard" icon={LayoutDashboard} label="Dashboard" href={eventId ? `/admin?eventId=${eventId}` : '/admin'} />
 
                 {isEnabled('wishlistEnabled') && (
@@ -136,16 +141,22 @@ export default function AdminSidebar({
                     <NavItem id="testing" icon={FlaskConical} label="Testing" />
                 )}
 
-                <div style={{ flexGrow: 1 }} />
+                <div style={{ flexGrow: 1 }} aria-hidden="true" />
 
                 <NavItem id="profile" icon={User} label="Min Profil" href={eventId ? `/admin/profile?eventId=${eventId}` : "/admin/profile"} />
+
+                {userRole === "SUPER_ADMIN" && (
+                    <NavItem id="superadmin" icon={ShieldAlert} label="Superadmin" href="/superadmin" />
+                )}
 
                 <button
                     onClick={() => setIsCollapsed(!isCollapsed)}
                     className={styles.navItem}
                     style={{ marginTop: 'auto', justifyContent: isCollapsed ? 'center' : 'flex-start' }}
+                    aria-expanded={!isCollapsed}
+                    aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
                 >
-                    {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+                    {isCollapsed ? <ChevronRight size={20} aria-hidden="true" /> : <ChevronLeft size={20} aria-hidden="true" />}
                     {!isCollapsed && <span>Minimer meny</span>}
                 </button>
             </nav>

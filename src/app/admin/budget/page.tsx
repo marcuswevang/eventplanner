@@ -41,7 +41,13 @@ export default async function BudgetPage({
 
     return (
         <div className={styles.container}>
-            <AdminSidebar eventId={eventId} activeTab="budget" userId={(session.user as any).id} config={event.config} />
+            <AdminSidebar
+                eventId={eventId}
+                activeTab="budget"
+                userId={(session.user as any).id}
+                userRole={(session.user as any).role}
+                config={event.config}
+            />
             <main className={styles.main}>
                 <div style={{ padding: '2rem' }}>
                     <header className={styles.header}>

@@ -20,6 +20,7 @@ export default async function ProfilePage(props: { searchParams: Promise<{ event
             <AdminSidebar
                 eventId={eventId}
                 userId={userId}
+                userRole={(session.user as any).role}
                 activeTab="profile"
                 showTesting={false}
             />
