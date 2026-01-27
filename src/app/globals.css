@@ -1,27 +1,36 @@
 :root {
-  /* Premium Wedding Palette */
+  /* Premium Wedding Palette - Accessibility Focused */
   --bg-color: #fcfaf7;
-  /* Ivory/Pearl */
+  /* Ivory/Pearl - Soft on eyes, reduced glare */
   --text-main: #2c2c2c;
-  /* Deep Charcoal */
-  --text-muted: #6b6b6b;
+  /* Deep Charcoal - Strong contrast */
+  --text-muted: #595959;
+  /* Medium Grey - Higher contrast than before */
+
   --accent-gold: #d4af37;
+  --accent-gold-dark: #8b6b00;
+  /* WCAG AA compliant gold for text */
   --accent-gold-rgb: 212, 175, 55;
-  /* Metallic Gold */
+
   --accent-gold-soft: #e5d19a;
   --accent-rose: #e2b1b1;
   --accent-green: #4a7c44;
   --accent-green-rgb: 74, 124, 68;
-  /* Dusty Rose */
-  --card-bg: rgba(255, 255, 255, 0.8);
-  --glass-border: rgba(212, 175, 55, 0.2);
-  --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.05);
+
+  --card-bg: rgba(255, 255, 255, 0.9);
+  /* Increased opacity for better contrast */
+  --glass-border: rgba(212, 175, 55, 0.3);
+  --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.08);
 
   --font-serif: 'Playfair Display', serif;
   --font-sans: 'Montserrat', sans-serif;
 
   --max-width: 1200px;
   --radius-lg: 12px;
+
+  /* Universal Design: Base font size and spacing */
+  --base-font-size: 1rem;
+  --base-line-height: 1.6;
 }
 
 [data-theme='dark'] {
@@ -42,14 +51,24 @@ html,
 body {
   max-width: 100vw;
   overflow-x: hidden;
-  background-image: linear-gradient(rgba(252, 250, 247, 0.7), rgba(252, 250, 247, 0.7)), url('/bakgrunnsbilde.jpg');
+  background-image: linear-gradient(rgba(252, 250, 247, 0.75), rgba(252, 250, 247, 0.75)), url('/bakgrunnsbilde.jpg');
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
   background-color: var(--bg-color);
   color: var(--text-main);
   font-family: var(--font-sans);
-  line-height: 1.6;
+  font-size: clamp(1rem, 0.95rem + 0.25vw, 1.1rem);
+  /* Fluid typography */
+  line-height: var(--base-line-height);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Accessibility: Focus improvements */
+:focus-visible {
+  outline: 3px solid var(--accent-gold);
+  outline-offset: 3px;
 }
 
 h1,
@@ -58,7 +77,9 @@ h3,
 h4 {
   font-family: var(--font-serif);
   font-weight: 600;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
+  /* Less tight for readability */
+  line-height: 1.3;
 }
 
 a {
@@ -152,11 +173,14 @@ a {
   font-size: 1.1rem;
   cursor: pointer;
   transition: all 0.3s ease;
+  min-height: 44px;
+  /* Universal design: Minimum touch target */
 }
 
 .luxury-button-ghost:hover {
-  color: var(--accent-gold);
-  background: rgba(0, 0, 0, 0.03);
+  color: var(--accent-gold-dark);
+  /* Using darker gold for hover text */
+  background: rgba(0, 0, 0, 0.05);
 }
 
 /* Sexy Input - Dark/Glass themed input */
