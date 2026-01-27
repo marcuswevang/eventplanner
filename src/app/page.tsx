@@ -1,10 +1,24 @@
-import styles from "./page.module.css";
-import Countdown from "@/components/Countdown";
-import { Heart, ShieldAlert } from "lucide-react";
-import ImageStream from "@/components/ImageStream";
+import LandingPageRenderer from "@/components/LandingPageRenderer";
+import { ShieldAlert } from "lucide-react";
 import GuestProtectionWrapper from "@/components/GuestProtectionWrapper";
 import { checkEventAuth } from "@/app/actions";
 import { resolveEvent, isEventActive } from "@/lib/event";
+
+const DEFAULT_SETTINGS = {
+  countdownDate: '2026-08-15T15:00:00',
+  landingPage: {
+    titleNames: "Event & Planner",
+    dateText: "15. AUGUST 2026",
+    welcomeText: "Velkommen til vår store dag",
+    showGallery: true,
+    showRsvp: true,
+    showDinner: true,
+    showParty: true,
+    showWishlist: true,
+    showPlaylist: true,
+    layout: ["title", "gallery", "date", "welcome", "countdown", "rsvp", "links"]
+  }
+};
 
 export default async function Home({
   searchParams
@@ -46,31 +60,11 @@ export default async function Home({
   const eventId = event.id;
   const isProtected = !!event.guestPassword;
   const isAuthenticated = await checkEventAuth(eventId);
+  const settings = (event?.settings as any) || DEFAULT_SETTINGS;
 
   return (
     <GuestProtectionWrapper eventId={eventId} isInitiallyAuthenticated={isAuthenticated || !isProtected}>
-      <main className={styles.main}>
-        <div className={styles.hero}>
-          <div className={styles.overlay}></div>
-          <div className={styles.content}>
-            <p className={styles.topSubtitle}>Velkommen til</p>
-            <h1 className={styles.title}>
-              <span className={styles.name}>{event.name?.split(' ')[0] || "Event"}</span>
-              <span className={styles.ampersand}>{event.name?.split(' ')[1] || "Planner"}</span>
-            </h1>
-            <p className={styles.date}>{event.date ? new Date(event.date).toLocaleDateString('no-NO', { day: 'numeric', month: 'long', year: 'numeric' }) : "Planlegg din store dag"}</p>
-
-            <Countdown targetDate={event.date} />
-
-            <ImageStream eventId={eventId} />
-
-            <div className={styles.selectionTitle}>
-              <Heart size={16} fill="var(--accent-gold)" color="var(--accent-gold)" />
-              <span>Ditt alt-i-ett planleggingsverktøy</span>
-            </div>
-          </div>
-        </div>
-      </main>
+      <LandingPageRenderer settings={settings} eventId={eventId} />
     </GuestProtectionWrapper>
   );
 }

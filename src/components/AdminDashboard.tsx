@@ -3,7 +3,9 @@
 import { useState, useEffect, useRef } from "react";
 import EventSwitcher from "./EventSwitcher";
 import styles from "@/app/admin/admin.module.css";
-import { Users, LayoutDashboard, Utensils, Gift, Trash2, Martini, Pencil, WheatOff, MilkOff, Vegan, EggOff, PlusCircle, Circle, Square, RectangleHorizontal, Check, X, StretchHorizontal, CheckSquare, Lock, Unlock, FileUp, Wallet, Camera, Settings, User } from "lucide-react";
+import { Users, LayoutDashboard, Utensils, Gift, Trash2, Martini, Pencil, WheatOff, MilkOff, Vegan, EggOff, PlusCircle, Circle, Square, RectangleHorizontal, Check, X, StretchHorizontal, CheckSquare, Lock, Unlock, FileUp, Wallet, Camera, Settings, User, GripVertical, AlertCircle, Info, Calendar, Layout, Save, CheckCircle2 } from "lucide-react";
+import LandingPageRenderer from "./LandingPageRenderer";
+import IconPicker, { ICON_LIBRARY } from "./IconPicker";
 import AdminWishlistForm from "@/components/AdminWishlistForm";
 import AdminGuestForm from "@/components/AdminGuestForm";
 import GalleryUploader from "@/components/GalleryUploader";
@@ -12,9 +14,39 @@ import ConfirmationModal from "@/components/ConfirmationModal";
 import Modal from "@/components/Modal";
 import AdminSidebar from "./AdminSidebar";
 
+const DEFAULT_LAYOUT = ["title", "gallery", "date", "welcome", "countdown", "rsvp", "links"];
+
+const DEFAULT_SETTINGS = {
+    countdownDate: "2026-08-15T15:00:00",
+    landingPage: {
+        titleNames: "Event & Planner",
+        dateText: "15. AUGUST 2026",
+        welcomeText: "Velkomstmelding",
+        showGallery: true,
+        showRsvp: true,
+        showDinner: true,
+        showParty: true,
+        showWishlist: true,
+        showPlaylist: true,
+        layout: DEFAULT_LAYOUT,
+        verticalOffset: 15
+    }
+};
+
+const COMPONENT_LABELS: Record<string, string> = {
+    "title": "Tittel (Navn)",
+    "date": "Dato",
+    "welcome": "Velkomstmelding",
+    "countdown": "Nedtelling",
+    "rsvp": "Knapp: Svar på invitasjon",
+    "links": "Lenker: Middag, Fest, Ønskeliste etc.",
+    "gallery": "Bildegalleri"
+};
+
 interface AdminDashboardProps {
     eventId: string;
     userId: string;
+    userRole?: string;
     guests: any[];
     items: any[];
     songs: any[];
@@ -26,7 +58,7 @@ interface AdminDashboardProps {
 
 type Tab = 'dashboard' | 'wishlist' | 'guests' | 'tables' | 'map' | 'gallery' | 'settings' | 'testing';
 
-export default function AdminDashboard({ eventId, userId, guests, items, songs, tables, galleryItems, event, initialTab = 'dashboard' }: AdminDashboardProps) {
+export default function AdminDashboard({ eventId, userId, userRole, guests, items, songs, tables, galleryItems, event, initialTab = 'dashboard' }: AdminDashboardProps) {
     const [activeTab, setActiveTab] = useState<Tab>(initialTab);
     const [editingGuest, setEditingGuest] = useState<any>(null);
     const [newTableName, setNewTableName] = useState("");
@@ -51,6 +83,55 @@ export default function AdminDashboard({ eventId, userId, guests, items, songs, 
     const [viewingAdmin, setViewingAdmin] = useState<any>(null);
     const [tempPasswordMessage, setTempPasswordMessage] = useState<string | null>(null);
     const [isEditingAdmin, setIsEditingAdmin] = useState(false);
+
+    // Layout Management State
+    const [localSettings, setLocalSettings] = useState<any>(() => {
+        const s = { ...DEFAULT_SETTINGS };
+        if (event.settings) {
+            if ((event.settings as any).countdownDate) s.countdownDate = (event.settings as any).countdownDate;
+            if ((event.settings as any).landingPage) s.landingPage = { ...s.landingPage, ...(event.settings as any).landingPage };
+        }
+        return s;
+    });
+    const [activeIconPicker, setActiveIconPicker] = useState<{ section: string, index: number } | null>(null);
+
+    const handleDragStart = (e: React.DragEvent, index: number) => {
+        e.dataTransfer.setData("index", index.toString());
+        e.dataTransfer.effectAllowed = "move";
+    };
+
+    const handleDrop = (e: React.DragEvent, targetIndex: number) => {
+        e.preventDefault();
+        const sourceIndex = parseInt(e.dataTransfer.getData("index"));
+        if (isNaN(sourceIndex) || sourceIndex === targetIndex) return;
+
+        const currentLayout = localSettings.landingPage?.layout || DEFAULT_LAYOUT;
+        const newLayout = [...currentLayout];
+        const [movedItem] = newLayout.splice(sourceIndex, 1);
+        newLayout.splice(targetIndex, 0, movedItem);
+
+        const updatedSettings = {
+            ...localSettings,
+            landingPage: { ...localSettings.landingPage, layout: newLayout }
+        };
+
+        setLocalSettings(updatedSettings);
+        updateEventSettings(eventId, { settings: updatedSettings });
+    };
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+    };
+
+    const updateLandingPage = (field: string, value: any) => {
+        const updatedSettings = {
+            ...localSettings,
+            landingPage: { ...localSettings.landingPage, [field]: value }
+        };
+        setLocalSettings(updatedSettings);
+        updateEventSettings(eventId, { settings: updatedSettings });
+    };
 
     // Confirmation Modal State
     const [confirmModal, setConfirmModal] = useState({
@@ -232,6 +313,7 @@ export default function AdminDashboard({ eventId, userId, guests, items, songs, 
             <AdminSidebar
                 eventId={eventId}
                 userId={userId}
+                userRole={userRole}
                 activeTab={activeTab}
                 onTabChange={(tab) => setActiveTab(tab as Tab)}
                 config={event.config}
@@ -974,6 +1056,94 @@ export default function AdminDashboard({ eventId, userId, guests, items, songs, 
                                         <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>
                                             Merk: Du må peke domenets DNS til vår server for at dette skal virke.
                                         </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className={`${styles.tableCard} glass`}>
+                                <h3>Forside & Design</h3>
+                                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                                    Tilpass forsiden og rekkefølgen på elementene.
+                                </p>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                                    <div>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'block' }}>Hovedtittel</label>
+                                        <input
+                                            type="text"
+                                            value={localSettings.landingPage?.titleNames}
+                                            onChange={(e) => updateLandingPage('titleNames', e.target.value)}
+                                            placeholder="Eks: Marita & Marcus"
+                                            className="sexy-input"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'block' }}>Velkomstmelding</label>
+                                        <input
+                                            type="text"
+                                            value={localSettings.landingPage?.welcomeText}
+                                            onChange={(e) => updateLandingPage('welcomeText', e.target.value)}
+                                            placeholder="Eks: Velkommen til vår store dag"
+                                            className="sexy-input"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'block' }}>Nedtelling til (Dato og Tid)</label>
+                                        <input
+                                            type="datetime-local"
+                                            value={localSettings.countdownDate?.substring(0, 16)}
+                                            onChange={(e) => {
+                                                const updatedSettings = { ...localSettings, countdownDate: e.target.value };
+                                                setLocalSettings(updatedSettings);
+                                                updateEventSettings(eventId, { settings: updatedSettings });
+                                            }}
+                                            className="sexy-input"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'block' }}>Vertikal plassering av innhold ({localSettings.landingPage?.verticalOffset ?? 15}vh fra toppen)</label>
+                                        <input
+                                            type="range"
+                                            min="0"
+                                            max="50"
+                                            step="1"
+                                            value={localSettings.landingPage?.verticalOffset ?? 15}
+                                            onChange={(e) => updateLandingPage('verticalOffset', parseInt(e.target.value))}
+                                            style={{ width: '100%', accentColor: 'var(--accent-gold)' }}
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem', display: 'block' }}>Rekkefølge på elementer (dra og slipp)</label>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                            {(localSettings.landingPage?.layout || DEFAULT_LAYOUT).map((component: string, index: number) => (
+                                                <div
+                                                    key={component}
+                                                    draggable
+                                                    onDragStart={(e) => handleDragStart(e, index)}
+                                                    onDragOver={handleDragOver}
+                                                    onDrop={(e) => handleDrop(e, index)}
+                                                    style={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        padding: '0.75rem 1rem',
+                                                        background: 'rgba(255, 255, 255, 0.03)',
+                                                        borderRadius: '8px',
+                                                        border: '1px solid var(--glass-border)',
+                                                        cursor: 'grab',
+                                                        gap: '1rem'
+                                                    }}
+                                                >
+                                                    <GripVertical size={18} color="var(--text-muted)" />
+                                                    <span style={{ fontSize: '0.9rem' }}>
+                                                        {COMPONENT_LABELS[component] || component}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
                                 </div>
                             </div>

@@ -90,6 +90,7 @@ export default async function AdminPage({
         <AdminDashboard
             eventId={eventId}
             userId={userId}
+            userRole={(session.user as any).role}
             guests={guests}
             items={items}
             songs={songs}

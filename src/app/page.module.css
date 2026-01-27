@@ -118,3 +118,36 @@
         gap: 1rem;
     }
 }
+
+.secondaryActions {
+    display: flex;
+    gap: 1.5rem;
+    justify-content: center;
+    align-items: center;
+    margin-top: 1rem;
+}
+
+.actionLink {
+    text-transform: uppercase;
+    font-size: 0.9rem;
+    letter-spacing: 0.15em;
+    color: var(--text-muted);
+    transition: all 0.2s ease;
+}
+
+.actionLink:hover {
+    color: var(--accent-gold);
+}
+
+.separator {
+    color: var(--glass-border);
+    font-weight: 200;
+}
+
+.welcome {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 1.5rem;
+    color: var(--text-muted);
+    margin-bottom: 2rem;
+}
