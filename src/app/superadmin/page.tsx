@@ -26,12 +26,18 @@ export default async function SuperadminPage() {
         return <div style={{ padding: "2rem", color: "#ff4444" }}>{allUsersResult.error}</div>;
     }
 
+    if (!session?.user) {
+        redirect("/login");
+    }
+
     return (
         <main className="min-h-screen">
             <SuperadminDashboard
                 initialEvents={eventsResult.events || []}
                 initialPendingUsers={pendingUsersResult.users || []}
                 initialAllUsers={allUsersResult.users || []}
+                userId={(session.user as any).id}
+                userRole={(session.user as any).role}
             />
         </main>
     );
