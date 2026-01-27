@@ -28,6 +28,12 @@ const DEFAULT_SETTINGS = {
         showParty: true,
         showWishlist: true,
         showPlaylist: true,
+        protectedGallery: false,
+        protectedRsvp: false,
+        protectedDinner: false,
+        protectedParty: false,
+        protectedWishlist: false,
+        protectedPlaylist: false,
         layout: DEFAULT_LAYOUT,
         verticalOffset: 15
     }
@@ -60,6 +66,13 @@ type Tab = 'dashboard' | 'wishlist' | 'guests' | 'tables' | 'map' | 'gallery' | 
 
 export default function AdminDashboard({ eventId, userId, userRole, guests, items, songs, tables, galleryItems, event, initialTab = 'dashboard' }: AdminDashboardProps) {
     const [activeTab, setActiveTab] = useState<Tab>(initialTab);
+
+    // Sync activeTab with prop when URL changes (e.g. clicking sidebar links)
+    useEffect(() => {
+        if (initialTab && initialTab !== activeTab) {
+            setActiveTab(initialTab);
+        }
+    }, [initialTab]);
     const [editingGuest, setEditingGuest] = useState<any>(null);
     const [newTableName, setNewTableName] = useState("");
     const [newTableCapacity, setNewTableCapacity] = useState(8);
@@ -124,13 +137,15 @@ export default function AdminDashboard({ eventId, userId, userRole, guests, item
         e.dataTransfer.dropEffect = "move";
     };
 
-    const updateLandingPage = (field: string, value: any) => {
+    const updateLandingPage = (field: string, value: any, persist: boolean = true) => {
         const updatedSettings = {
             ...localSettings,
             landingPage: { ...localSettings.landingPage, [field]: value }
         };
         setLocalSettings(updatedSettings);
-        updateEventSettings(eventId, { settings: updatedSettings });
+        if (persist) {
+            updateEventSettings(eventId, { settings: updatedSettings });
+        }
     };
 
     // Confirmation Modal State
@@ -953,8 +968,19 @@ export default function AdminDashboard({ eventId, userId, userRole, guests, item
 
                 {activeTab === 'settings' && (
                     <section className={styles.seating}>
-                        <header className={styles.header}>
+                        <header className={styles.header} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <h1>Arrangementsinnstillinger</h1>
+                            <button
+                                className="luxury-button"
+                                onClick={() => {
+                                    updateEventSettings(eventId, { settings: localSettings });
+                                    openConfirm("Lagret", "Endringene er lagret.", () => { });
+                                }}
+                                style={{ gap: '0.5rem' }}
+                            >
+                                <Save size={16} />
+                                <span>Lagre endringer</span>
+                            </button>
                         </header>
 
                         <div className={styles.tableGrid}>
@@ -980,50 +1006,6 @@ export default function AdminDashboard({ eventId, userId, userRole, guests, item
                                             onBlur={(e) => updateEventSettings(eventId, { guestPassword: e.target.value || null })}
                                         />
                                     </div>
-                                </div>
-                            </div>
-
-                            <div className={`${styles.tableCard} glass`}>
-                                <h3>Roller</h3>
-                                <div className={styles.formGroup} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
-                                    <div>
-                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'block' }}>Toastmaster</label>
-                                        <input
-                                            type="text"
-                                            defaultValue={(event.settings as any)?.toastmaster || ""}
-                                            placeholder="Navn på toastmaster"
-                                            className="sexy-input"
-                                            onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), toastmaster: e.target.value } })}
-                                        />
-                                    </div>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                        <div>
-                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'block' }}>Forlover (Din side)</label>
-                                            <input
-                                                type="text"
-                                                defaultValue={(event.settings as any)?.forlover1 || ""}
-                                                placeholder="Navn"
-                                                className="sexy-input"
-                                                onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), forlover1: e.target.value } })}
-                                            />
-                                        </div>
-                                        <div>
-                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'block' }}>Forlover (Partners side)</label>
-                                            <input
-                                                type="text"
-                                                defaultValue={(event.settings as any)?.forlover2 || ""}
-                                                placeholder="Navn"
-                                                className="sexy-input"
-                                                onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), forlover2: e.target.value } })}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className={`${styles.tableCard} glass`}>
-                                <h3>Nettadresse & Domene</h3>
-                                <div className={styles.formGroup} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
                                     <div>
                                         <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'block' }}>Personlig slug (e.g. mitt-bryllup)</label>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -1061,92 +1043,203 @@ export default function AdminDashboard({ eventId, userId, userRole, guests, item
                             </div>
 
                             <div className={`${styles.tableCard} glass`}>
-                                <h3>Forside & Design</h3>
-                                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-                                    Tilpass forsiden og rekkefølgen på elementene.
-                                </p>
-
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                                <h3>Personer & Roller</h3>
+                                <div className={styles.formGroup} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
                                     <div>
-                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'block' }}>Hovedtittel</label>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'block' }}>Brud</label>
                                         <input
                                             type="text"
-                                            value={localSettings.landingPage?.titleNames}
-                                            onChange={(e) => updateLandingPage('titleNames', e.target.value)}
-                                            placeholder="Eks: Marita & Marcus"
+                                            value={localSettings.landingPage?.bride || ""}
+                                            placeholder="Navn på brud"
                                             className="sexy-input"
+                                            onChange={(e) => updateLandingPage('bride', e.target.value, false)}
+                                            onBlur={() => updateEventSettings(eventId, { settings: localSettings })}
                                         />
                                     </div>
-
                                     <div>
-                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'block' }}>Velkomstmelding</label>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'block' }}>Brudgom</label>
                                         <input
                                             type="text"
-                                            value={localSettings.landingPage?.welcomeText}
-                                            onChange={(e) => updateLandingPage('welcomeText', e.target.value)}
-                                            placeholder="Eks: Velkommen til vår store dag"
+                                            value={localSettings.landingPage?.groom || ""}
+                                            placeholder="Navn på brudgom"
                                             className="sexy-input"
+                                            onChange={(e) => updateLandingPage('groom', e.target.value, false)}
+                                            onBlur={() => updateEventSettings(eventId, { settings: localSettings })}
                                         />
                                     </div>
-
                                     <div>
-                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'block' }}>Nedtelling til (Dato og Tid)</label>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'block' }}>Toastmaster</label>
                                         <input
-                                            type="datetime-local"
-                                            value={localSettings.countdownDate?.substring(0, 16)}
-                                            onChange={(e) => {
-                                                const updatedSettings = { ...localSettings, countdownDate: e.target.value };
-                                                setLocalSettings(updatedSettings);
-                                                updateEventSettings(eventId, { settings: updatedSettings });
-                                            }}
+                                            type="text"
+                                            value={localSettings.landingPage?.toastmaster || ""}
+                                            placeholder="Navn på toastmaster"
                                             className="sexy-input"
+                                            onChange={(e) => updateLandingPage('toastmaster', e.target.value, false)}
+                                            onBlur={() => updateEventSettings(eventId, { settings: localSettings })}
                                         />
                                     </div>
-
-                                    <div>
-                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'block' }}>Vertikal plassering av innhold ({localSettings.landingPage?.verticalOffset ?? 15}vh fra toppen)</label>
-                                        <input
-                                            type="range"
-                                            min="0"
-                                            max="50"
-                                            step="1"
-                                            value={localSettings.landingPage?.verticalOffset ?? 15}
-                                            onChange={(e) => updateLandingPage('verticalOffset', parseInt(e.target.value))}
-                                            style={{ width: '100%', accentColor: 'var(--accent-gold)' }}
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem', display: 'block' }}>Rekkefølge på elementer (dra og slipp)</label>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                            {(localSettings.landingPage?.layout || DEFAULT_LAYOUT).map((component: string, index: number) => (
-                                                <div
-                                                    key={component}
-                                                    draggable
-                                                    onDragStart={(e) => handleDragStart(e, index)}
-                                                    onDragOver={handleDragOver}
-                                                    onDrop={(e) => handleDrop(e, index)}
-                                                    style={{
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        padding: '0.75rem 1rem',
-                                                        background: 'rgba(255, 255, 255, 0.03)',
-                                                        borderRadius: '8px',
-                                                        border: '1px solid var(--glass-border)',
-                                                        cursor: 'grab',
-                                                        gap: '1rem'
-                                                    }}
-                                                >
-                                                    <GripVertical size={18} color="var(--text-muted)" />
-                                                    <span style={{ fontSize: '0.9rem' }}>
-                                                        {COMPONENT_LABELS[component] || component}
-                                                    </span>
-                                                </div>
-                                            ))}
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                        <div>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'block' }}>Forlover (Din side)</label>
+                                            <input
+                                                type="text"
+                                                value={localSettings.landingPage?.forlover1 || ""}
+                                                placeholder="Navn"
+                                                className="sexy-input"
+                                                onChange={(e) => updateLandingPage('forlover1', e.target.value, false)}
+                                                onBlur={() => updateEventSettings(eventId, { settings: localSettings })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'block' }}>Forlover (Partner)</label>
+                                            <input
+                                                type="text"
+                                                value={localSettings.landingPage?.forlover2 || ""}
+                                                placeholder="Navn"
+                                                className="sexy-input"
+                                                onChange={(e) => updateLandingPage('forlover2', e.target.value, false)}
+                                                onBlur={() => updateEventSettings(eventId, { settings: localSettings })}
+                                            />
                                         </div>
                                     </div>
                                 </div>
                             </div>
+
+                            {/* Program Content - only show if visible to guests */}
+                            {
+                                (event.config?.programVisible !== false) && (
+                                    <div className={`${styles.tableCard} glass`}>
+                                        <h3>📅 Program / Tidslinje</h3>
+                                        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                                            Legg til programpunkter som gjestene kan se.
+                                        </p>
+                                        <textarea
+                                            defaultValue={(event.settings as any)?.programContent || ""}
+                                            placeholder="F.eks:&#10;14:00 - Vielse i kirken&#10;15:30 - Ankomst til lokalet&#10;16:00 - Velkomstdrink&#10;17:30 - Middag serveres&#10;..."
+                                            className="sexy-input"
+                                            style={{ minHeight: '150px', resize: 'vertical' }}
+                                            onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), programContent: e.target.value } })}
+                                        />
+                                    </div>
+                                )
+                            }
+
+
+
+                            <div className={`${styles.tableCard} glass`} style={{ gridColumn: '1 / -1' }}>
+                                <h3>Forhåndsvisning av Landingsside</h3>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 1fr) 1.5fr', gap: '2rem', marginTop: '1rem' }}>
+                                    <div className={styles.formGroup} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                        <div>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'block' }}>Tittel Overskrift</label>
+                                            <input
+                                                type="text"
+                                                value={localSettings.landingPage?.titleNames}
+                                                onChange={(e) => updateLandingPage('titleNames', e.target.value, false)}
+                                                onBlur={() => updateEventSettings(eventId, { settings: localSettings })}
+                                                placeholder="Eks: Marita & Marcus"
+                                                className="sexy-input"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'block' }}>Velkomstmelding</label>
+                                            <input
+                                                type="text"
+                                                value={localSettings.landingPage?.welcomeText}
+                                                onChange={(e) => updateLandingPage('welcomeText', e.target.value, false)}
+                                                onBlur={() => updateEventSettings(eventId, { settings: localSettings })}
+                                                placeholder="Eks: Velkommen til vår store dag"
+                                                className="sexy-input"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'block' }}>Nedtellingsdato</label>
+                                            <input
+                                                type="datetime-local"
+                                                value={localSettings.countdownDate?.substring(0, 16)}
+                                                onChange={(e) => {
+                                                    const updatedSettings = { ...localSettings, countdownDate: e.target.value };
+                                                    setLocalSettings(updatedSettings);
+                                                    updateEventSettings(eventId, { settings: updatedSettings });
+                                                }}
+                                                className="sexy-input"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'block' }}>Vertikal Forskyvning ({localSettings.landingPage?.verticalOffset || 15}vh)</label>
+                                            <input
+                                                type="range"
+                                                min="0"
+                                                max="50"
+                                                value={localSettings.landingPage?.verticalOffset || 15}
+                                                style={{ width: '100%', accentColor: 'var(--accent-gold)' }}
+                                                onChange={(e) => updateLandingPage('verticalOffset', parseInt(e.target.value), false)}
+                                                onMouseUp={() => updateEventSettings(eventId, { settings: localSettings })}
+                                                onTouchEnd={() => updateEventSettings(eventId, { settings: localSettings })}
+                                            />
+                                        </div>
+                                        <div style={{ marginTop: '1rem' }}>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem', display: 'block' }}>Rekkefølge på elementer (dra og slipp)</label>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                                {(localSettings.landingPage?.layout || DEFAULT_LAYOUT).map((component: string, index: number) => (
+                                                    <div
+                                                        key={component}
+                                                        draggable
+                                                        onDragStart={(e) => handleDragStart(e, index)}
+                                                        onDragOver={handleDragOver}
+                                                        onDrop={(e) => handleDrop(e, index)}
+                                                        style={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            padding: '0.5rem 0.75rem',
+                                                            background: 'rgba(255, 255, 255, 0.03)',
+                                                            borderRadius: '8px',
+                                                            border: '1px solid var(--glass-border)',
+                                                            cursor: 'grab',
+                                                            gap: '0.75rem'
+                                                        }}
+                                                    >
+                                                        <GripVertical size={14} color="var(--text-muted)" />
+                                                        <span style={{ fontSize: '0.8rem' }}>
+                                                            {COMPONENT_LABELS[component] || component}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className={styles.previewContainer} style={{
+                                        border: '1px solid var(--glass-border)',
+                                        borderRadius: '12px',
+                                        overflow: 'hidden',
+                                        background: '#000',
+                                        position: 'relative',
+                                        height: '500px'
+                                    }}>
+                                        <div style={{
+                                            position: 'absolute',
+                                            top: '0.5rem',
+                                            left: '1rem',
+                                            zIndex: 10,
+                                            fontSize: '0.7rem',
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '0.1em',
+                                            color: 'rgba(255,255,255,0.5)'
+                                        }}>Forhåndsvisning</div>
+                                        <div style={{
+                                            transformOrigin: 'top left',
+                                            transform: 'scale(0.5)',
+                                            width: '200%',
+                                            height: '200%',
+                                            pointerEvents: 'none'
+                                        }}>
+                                            <LandingPageRenderer settings={localSettings} eventId={eventId} />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+
 
                             <div className={`${styles.tableCard} glass`}>
                                 <h3>Moduler</h3>
@@ -1235,258 +1328,237 @@ export default function AdminDashboard({ eventId, userId, userRole, guests, item
                                 </div>
                             </div>
 
+
+
                             <div className={`${styles.tableCard} glass`}>
-                                <h3>Gjestevisning</h3>
+                                <h3>Landingsside: Lenker & Tilgang</h3>
                                 <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-                                    Velg hvilke seksjoner gjestene skal se på arrangementsiden.
+                                    Velg hvilke lenker som skal vises på forsiden, og om gjester må være logget inn for å åpne de.
                                 </p>
 
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <span>📋 RSVP / Svar</span>
-                                        <button
-                                            onClick={() => updateEventSettings(eventId, { config: { ...(event.config || {}), rsvpVisible: !(event.config?.rsvpVisible !== false) } })}
-                                            className={(event.config?.rsvpVisible !== false) ? "luxury-button-soft" : "luxury-button-ghost"}
-                                            style={{ fontSize: '0.8rem', padding: '0.3rem 0.8rem' }}
-                                        >
-                                            {(event.config?.rsvpVisible !== false) ? "Synlig" : "Skjult"}
-                                        </button>
-                                    </div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <span>📅 Program</span>
-                                        <button
-                                            onClick={() => updateEventSettings(eventId, { config: { ...(event.config || {}), programVisible: !(event.config?.programVisible !== false) } })}
-                                            className={(event.config?.programVisible !== false) ? "luxury-button-soft" : "luxury-button-ghost"}
-                                            style={{ fontSize: '0.8rem', padding: '0.3rem 0.8rem' }}
-                                        >
-                                            {(event.config?.programVisible !== false) ? "Synlig" : "Skjult"}
-                                        </button>
-                                    </div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <span>📍 Lokasjon</span>
-                                        <button
-                                            onClick={() => updateEventSettings(eventId, { config: { ...(event.config || {}), locationVisible: !(event.config?.locationVisible !== false) } })}
-                                            className={(event.config?.locationVisible !== false) ? "luxury-button-soft" : "luxury-button-ghost"}
-                                            style={{ fontSize: '0.8rem', padding: '0.3rem 0.8rem' }}
-                                        >
-                                            {(event.config?.locationVisible !== false) ? "Synlig" : "Skjult"}
-                                        </button>
-                                    </div>
-                                    {/* Only show Ønskeliste toggle if wishlist module is enabled */}
-                                    {(event.config?.wishlistEnabled !== false) && (
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <span>🎁 Ønskeliste</span>
-                                            <button
-                                                onClick={() => updateEventSettings(eventId, { config: { ...(event.config || {}), wishlistVisible: !(event.config?.wishlistVisible !== false) } })}
-                                                className={(event.config?.wishlistVisible !== false) ? "luxury-button-soft" : "luxury-button-ghost"}
-                                                style={{ fontSize: '0.8rem', padding: '0.3rem 0.8rem' }}
-                                            >
-                                                {(event.config?.wishlistVisible !== false) ? "Synlig" : "Skjult"}
-                                            </button>
-                                        </div>
-                                    )}
-                                    {/* Only show Galleri toggle if gallery module is enabled */}
-                                    {(event.config?.galleryEnabled !== false) && (
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <span>📸 Galleri</span>
-                                            <button
-                                                onClick={() => updateEventSettings(eventId, { config: { ...(event.config || {}), galleryVisible: !(event.config?.galleryVisible !== false) } })}
-                                                className={(event.config?.galleryVisible !== false) ? "luxury-button-soft" : "luxury-button-ghost"}
-                                                style={{ fontSize: '0.8rem', padding: '0.3rem 0.8rem' }}
-                                            >
-                                                {(event.config?.galleryVisible !== false) ? "Synlig" : "Skjult"}
-                                            </button>
-                                        </div>
-                                    )}
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <span>🎵 Låtønsker</span>
-                                        <button
-                                            onClick={() => updateEventSettings(eventId, { config: { ...(event.config || {}), songsVisible: !(event.config?.songsVisible !== false) } })}
-                                            className={(event.config?.songsVisible !== false) ? "luxury-button-soft" : "luxury-button-ghost"}
-                                            style={{ fontSize: '0.8rem', padding: '0.3rem 0.8rem' }}
-                                        >
-                                            {(event.config?.songsVisible !== false) ? "Synlig" : "Skjult"}
-                                        </button>
-                                    </div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <span>🍽️ Meny</span>
-                                        <button
-                                            onClick={() => updateEventSettings(eventId, { config: { ...(event.config || {}), menuVisible: !(event.config?.menuVisible !== false) } })}
-                                            className={(event.config?.menuVisible !== false) ? "luxury-button-soft" : "luxury-button-ghost"}
-                                            style={{ fontSize: '0.8rem', padding: '0.3rem 0.8rem' }}
-                                        >
-                                            {(event.config?.menuVisible !== false) ? "Synlig" : "Skjult"}
-                                        </button>
-                                    </div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <span>👔 Dresscode</span>
-                                        <button
-                                            onClick={() => updateEventSettings(eventId, { config: { ...(event.config || {}), dresscodeVisible: !(event.config?.dresscodeVisible !== false) } })}
-                                            className={(event.config?.dresscodeVisible !== false) ? "luxury-button-soft" : "luxury-button-ghost"}
-                                            style={{ fontSize: '0.8rem', padding: '0.3rem 0.8rem' }}
-                                        >
-                                            {(event.config?.dresscodeVisible !== false) ? "Synlig" : "Skjult"}
-                                        </button>
-                                    </div>
+                                <div style={{ overflowX: 'auto' }}>
+                                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                                        <thead>
+                                            <tr style={{ borderBottom: '1px solid var(--glass-border)' }}>
+                                                <th style={{ textAlign: 'left', padding: '0.5rem', color: 'var(--text-muted)', fontWeight: 400 }}>Modul</th>
+                                                <th style={{ textAlign: 'center', padding: '0.5rem', color: 'var(--text-muted)', fontWeight: 400 }}>Synlig</th>
+                                                <th style={{ textAlign: 'center', padding: '0.5rem', color: 'var(--text-muted)', fontWeight: 400 }}>Passord</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {[
+                                                { id: 'Rsvp', label: '📋 RSVP / Svar' },
+                                                { id: 'Program', label: '📅 Program' },
+                                                { id: 'Location', label: '📍 Lokasjoner' },
+                                                { id: 'Info', label: 'ℹ️ Praktisk Info' },
+                                                { id: 'Dresscode', label: '👕 Dresscode' },
+                                                { id: 'Menu', label: '🍴 Meny' },
+                                                { id: 'Dinner', label: '🍽️ Middag' },
+                                                { id: 'Party', label: '🎉 Fest' },
+                                                { id: 'Wishlist', label: '🎁 Ønskeliste', configKey: 'wishlistEnabled' },
+                                                { id: 'Playlist', label: '🎵 Låtønsker' },
+                                                { id: 'Gallery', label: '📸 Galleri', configKey: 'galleryEnabled' }
+                                            ].map((module) => {
+                                                // Skip if module is disabled globally
+                                                if (module.configKey && event.config?.[module.configKey] === false) return null;
+
+                                                const showKey = `show${module.id}`;
+                                                const protKey = `protected${module.id}`;
+                                                const isShowing = localSettings.landingPage?.[showKey] !== false;
+                                                const isProtected = localSettings.landingPage?.[protKey] === true;
+
+                                                return (
+                                                    <tr key={module.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                                                        <td style={{ padding: '0.75rem 0.5rem' }}>{module.label}</td>
+                                                        <td style={{ textAlign: 'center', padding: '0.75rem 0.5rem' }}>
+                                                            <button
+                                                                onClick={() => updateLandingPage(showKey, !isShowing)}
+                                                                className={isShowing ? "luxury-button-soft" : "luxury-button-ghost"}
+                                                                style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem', minWidth: '60px' }}
+                                                            >
+                                                                {isShowing ? "Ja" : "Nei"}
+                                                            </button>
+                                                        </td>
+                                                        <td style={{ textAlign: 'center', padding: '0.75rem 0.5rem' }}>
+                                                            <button
+                                                                onClick={() => updateLandingPage(protKey, !isProtected)}
+                                                                className={isProtected ? "luxury-button-soft" : "luxury-button-ghost"}
+                                                                style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem', minWidth: '60px' }}
+                                                            >
+                                                                {isProtected ? "Låst" : "Åpen"}
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
 
-                            {/* Program Content - only show if visible to guests */}
-                            {(event.config?.programVisible !== false) && (
-                                <div className={`${styles.tableCard} glass`}>
-                                    <h3>📅 Program / Tidslinje</h3>
-                                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-                                        Legg til programpunkter som gjestene kan se.
-                                    </p>
-                                    <textarea
-                                        defaultValue={(event.settings as any)?.programContent || ""}
-                                        placeholder="F.eks:&#10;14:00 - Vielse i kirken&#10;15:30 - Ankomst til lokalet&#10;16:00 - Velkomstdrink&#10;17:30 - Middag serveres&#10;..."
-                                        className="sexy-input"
-                                        style={{ minHeight: '150px', resize: 'vertical' }}
-                                        onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), programContent: e.target.value } })}
-                                    />
-                                </div>
-                            )}
-
                             {/* Location Content - Multiple Venues - only show if visible to guests */}
-                            {(event.config?.locationVisible !== false) && (
-                                <div className={`${styles.tableCard} glass`}>
-                                    <h3>📍 Lokasjoner</h3>
-                                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-                                        Legg til informasjon om de ulike stedene for arrangementet.
-                                    </p>
+                            {
+                                (event.config?.locationVisible !== false) && (
+                                    <div className={`${styles.tableCard} glass`}>
+                                        <h3>📍 Lokasjoner</h3>
+                                        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                                            Legg til informasjon om de ulike stedene for arrangementet.
+                                        </p>
 
-                                    {/* Ceremony Venue */}
-                                    <div style={{ marginBottom: '2rem', padding: '1rem', background: 'rgba(0,0,0,0.05)', borderRadius: '8px' }}>
-                                        <h4 style={{ margin: '0 0 1rem 0', fontSize: '1rem' }}>⛪ Seremoni / Vielse</h4>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
-                                            <input
-                                                type="text"
-                                                defaultValue={(event.settings as any)?.ceremonyName || ""}
-                                                placeholder="Stedsnavn (f.eks: Oslo Domkirke)"
+                                        {/* Ceremony Venue */}
+                                        <div style={{ marginBottom: '2rem', padding: '1rem', background: 'rgba(0,0,0,0.05)', borderRadius: '8px' }}>
+                                            <h4 style={{ margin: '0 0 1rem 0', fontSize: '1rem' }}>⛪ Seremoni / Vielse</h4>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                                                <input
+                                                    type="text"
+                                                    defaultValue={(event.settings as any)?.ceremonyName || ""}
+                                                    placeholder="Stedsnavn (f.eks: Oslo Domkirke)"
+                                                    className="sexy-input"
+                                                    onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), ceremonyName: e.target.value } })}
+                                                />
+                                                <input
+                                                    type="text"
+                                                    defaultValue={(event.settings as any)?.ceremonyAddress || ""}
+                                                    placeholder="Adresse"
+                                                    className="sexy-input"
+                                                    onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), ceremonyAddress: e.target.value } })}
+                                                />
+                                                <input
+                                                    type="url"
+                                                    defaultValue={(event.settings as any)?.ceremonyMapUrl || ""}
+                                                    placeholder="Google Maps lenke (valgfritt)"
+                                                    className="sexy-input"
+                                                    onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), ceremonyMapUrl: e.target.value } })}
+                                                />
+                                                <input
+                                                    type="time"
+                                                    defaultValue={(event.settings as any)?.ceremonyTime || ""}
+                                                    className="sexy-input"
+                                                    onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), ceremonyTime: e.target.value } })}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Dinner Venue */}
+                                        <div style={{ marginBottom: '2rem', padding: '1rem', background: 'rgba(0,0,0,0.05)', borderRadius: '8px' }}>
+                                            <h4 style={{ margin: '0 0 1rem 0', fontSize: '1rem' }}>🍽️ Middagslokale</h4>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                                                <input
+                                                    type="text"
+                                                    defaultValue={(event.settings as any)?.dinnerName || ""}
+                                                    placeholder="Stedsnavn (f.eks: Grand Hotel)"
+                                                    className="sexy-input"
+                                                    onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), dinnerName: e.target.value } })}
+                                                />
+                                                <input
+                                                    type="text"
+                                                    defaultValue={(event.settings as any)?.dinnerAddress || ""}
+                                                    placeholder="Adresse"
+                                                    className="sexy-input"
+                                                    onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), dinnerAddress: e.target.value } })}
+                                                />
+                                                <input
+                                                    type="url"
+                                                    defaultValue={(event.settings as any)?.dinnerMapUrl || ""}
+                                                    placeholder="Google Maps lenke (valgfritt)"
+                                                    className="sexy-input"
+                                                    onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), dinnerMapUrl: e.target.value } })}
+                                                />
+                                                <input
+                                                    type="time"
+                                                    defaultValue={(event.settings as any)?.dinnerTime || ""}
+                                                    className="sexy-input"
+                                                    onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), dinnerTime: e.target.value } })}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Party Venue */}
+                                        <div style={{ padding: '1rem', background: 'rgba(0,0,0,0.05)', borderRadius: '8px' }}>
+                                            <h4 style={{ margin: '0 0 1rem 0', fontSize: '1rem' }}>🎉 Festlokale</h4>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                                                <input
+                                                    type="text"
+                                                    defaultValue={(event.settings as any)?.partyName || ""}
+                                                    placeholder="Stedsnavn (samme som middag hvis likt)"
+                                                    className="sexy-input"
+                                                    onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), partyName: e.target.value } })}
+                                                />
+                                                <input
+                                                    type="text"
+                                                    defaultValue={(event.settings as any)?.partyAddress || ""}
+                                                    placeholder="Adresse"
+                                                    className="sexy-input"
+                                                    onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), partyAddress: e.target.value } })}
+                                                />
+                                                <input
+                                                    type="url"
+                                                    defaultValue={(event.settings as any)?.partyMapUrl || ""}
+                                                    placeholder="Google Maps lenke (valgfritt)"
+                                                    className="sexy-input"
+                                                    onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), partyMapUrl: e.target.value } })}
+                                                />
+                                                <input
+                                                    type="time"
+                                                    defaultValue={(event.settings as any)?.partyTime || ""}
+                                                    className="sexy-input"
+                                                    onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), partyTime: e.target.value } })}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Extra info */}
+                                        <div style={{ marginTop: '1.5rem' }}>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'block' }}>Ekstra info (parkering, transport, etc.)</label>
+                                            <textarea
+                                                defaultValue={(event.settings as any)?.locationInfo || ""}
+                                                placeholder="F.eks: Parkering tilgjengelig, nærmeste busstopp, etc."
                                                 className="sexy-input"
-                                                onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), ceremonyName: e.target.value } })}
-                                            />
-                                            <input
-                                                type="text"
-                                                defaultValue={(event.settings as any)?.ceremonyAddress || ""}
-                                                placeholder="Adresse"
-                                                className="sexy-input"
-                                                onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), ceremonyAddress: e.target.value } })}
-                                            />
-                                            <input
-                                                type="url"
-                                                defaultValue={(event.settings as any)?.ceremonyMapUrl || ""}
-                                                placeholder="Google Maps lenke (valgfritt)"
-                                                className="sexy-input"
-                                                onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), ceremonyMapUrl: e.target.value } })}
+                                                style={{ minHeight: '80px', resize: 'vertical' }}
+                                                onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), locationInfo: e.target.value } })}
                                             />
                                         </div>
                                     </div>
-
-                                    {/* Dinner Venue */}
-                                    <div style={{ marginBottom: '2rem', padding: '1rem', background: 'rgba(0,0,0,0.05)', borderRadius: '8px' }}>
-                                        <h4 style={{ margin: '0 0 1rem 0', fontSize: '1rem' }}>🍽️ Middagslokale</h4>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
-                                            <input
-                                                type="text"
-                                                defaultValue={(event.settings as any)?.dinnerName || ""}
-                                                placeholder="Stedsnavn (f.eks: Grand Hotel)"
-                                                className="sexy-input"
-                                                onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), dinnerName: e.target.value } })}
-                                            />
-                                            <input
-                                                type="text"
-                                                defaultValue={(event.settings as any)?.dinnerAddress || ""}
-                                                placeholder="Adresse"
-                                                className="sexy-input"
-                                                onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), dinnerAddress: e.target.value } })}
-                                            />
-                                            <input
-                                                type="url"
-                                                defaultValue={(event.settings as any)?.dinnerMapUrl || ""}
-                                                placeholder="Google Maps lenke (valgfritt)"
-                                                className="sexy-input"
-                                                onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), dinnerMapUrl: e.target.value } })}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {/* Party Venue */}
-                                    <div style={{ padding: '1rem', background: 'rgba(0,0,0,0.05)', borderRadius: '8px' }}>
-                                        <h4 style={{ margin: '0 0 1rem 0', fontSize: '1rem' }}>🎉 Festlokale</h4>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
-                                            <input
-                                                type="text"
-                                                defaultValue={(event.settings as any)?.partyName || ""}
-                                                placeholder="Stedsnavn (samme som middag hvis likt)"
-                                                className="sexy-input"
-                                                onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), partyName: e.target.value } })}
-                                            />
-                                            <input
-                                                type="text"
-                                                defaultValue={(event.settings as any)?.partyAddress || ""}
-                                                placeholder="Adresse"
-                                                className="sexy-input"
-                                                onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), partyAddress: e.target.value } })}
-                                            />
-                                            <input
-                                                type="url"
-                                                defaultValue={(event.settings as any)?.partyMapUrl || ""}
-                                                placeholder="Google Maps lenke (valgfritt)"
-                                                className="sexy-input"
-                                                onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), partyMapUrl: e.target.value } })}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {/* Extra info */}
-                                    <div style={{ marginTop: '1.5rem' }}>
-                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'block' }}>Ekstra info (parkering, transport, etc.)</label>
-                                        <textarea
-                                            defaultValue={(event.settings as any)?.locationInfo || ""}
-                                            placeholder="F.eks: Parkering tilgjengelig, nærmeste busstopp, etc."
-                                            className="sexy-input"
-                                            style={{ minHeight: '80px', resize: 'vertical' }}
-                                            onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), locationInfo: e.target.value } })}
-                                        />
-                                    </div>
-                                </div>
-                            )}
+                                )
+                            }
 
                             {/* Menu Content - only show if visible to guests */}
-                            {(event.config?.menuVisible !== false) && (
-                                <div className={`${styles.tableCard} glass`}>
-                                    <h3>🍽️ Meny</h3>
-                                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-                                        Beskriv menyen for middagen.
-                                    </p>
-                                    <textarea
-                                        defaultValue={(event.settings as any)?.menuContent || ""}
-                                        placeholder="F.eks:&#10;Forrett: Reker med aioli&#10;Hovedrett: Oksefilet med rødvinssaus&#10;Dessert: Sjokoladefondant&#10;&#10;Vegetar og allergitilpasning tilgjengelig."
-                                        className="sexy-input"
-                                        style={{ minHeight: '150px', resize: 'vertical' }}
-                                        onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), menuContent: e.target.value } })}
-                                    />
-                                </div>
-                            )}
+                            {
+                                (event.config?.menuVisible !== false) && (
+                                    <div className={`${styles.tableCard} glass`}>
+                                        <h3>🍽️ Meny</h3>
+                                        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                                            Beskriv menyen for middagen.
+                                        </p>
+                                        <textarea
+                                            defaultValue={(event.settings as any)?.menuContent || ""}
+                                            placeholder="F.eks:&#10;Forrett: Reker med aioli&#10;Hovedrett: Oksefilet med rødvinssaus&#10;Dessert: Sjokoladefondant&#10;&#10;Vegetar og allergitilpasning tilgjengelig."
+                                            className="sexy-input"
+                                            style={{ minHeight: '150px', resize: 'vertical' }}
+                                            onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), menuContent: e.target.value } })}
+                                        />
+                                    </div>
+                                )
+                            }
 
                             {/* Dresscode Content - only show if visible to guests */}
-                            {(event.config?.dresscodeVisible !== false) && (
-                                <div className={`${styles.tableCard} glass`}>
-                                    <h3>👔 Dresscode</h3>
-                                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-                                        Beskriv antrekkskode for gjestene.
-                                    </p>
-                                    <textarea
-                                        defaultValue={(event.settings as any)?.dresscodeContent || ""}
-                                        placeholder="F.eks:&#10;Dresscode: Festlig&#10;Damer: Lang kjole eller festantrekk&#10;Herrer: Dress eller mørk dress"
-                                        className="sexy-input"
-                                        style={{ minHeight: '100px', resize: 'vertical' }}
-                                        onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), dresscodeContent: e.target.value } })}
-                                    />
-                                </div>
-                            )}
+                            {
+                                (event.config?.dresscodeVisible !== false) && (
+                                    <div className={`${styles.tableCard} glass`}>
+                                        <h3>👔 Dresscode</h3>
+                                        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                                            Beskriv antrekkskode for gjestene.
+                                        </p>
+                                        <textarea
+                                            defaultValue={(event.settings as any)?.dresscodeContent || ""}
+                                            placeholder="F.eks:&#10;Dresscode: Festlig&#10;Damer: Lang kjole eller festantrekk&#10;Herrer: Dress eller mørk dress"
+                                            className="sexy-input"
+                                            style={{ minHeight: '100px', resize: 'vertical' }}
+                                            onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), dresscodeContent: e.target.value } })}
+                                        />
+                                    </div>
+                                )
+                            }
 
                             <div className={`${styles.tableCard} glass`}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
@@ -1549,110 +1621,60 @@ export default function AdminDashboard({ eventId, userId, userRole, guests, item
                                     ))}
                                 </div>
                             </div>
-                        </div>
-                    </section>
-                )}
+                        </div >
+                    </section >
+                )
+                }
 
-                {activeTab === 'map' && (
-                    <section className={styles.seating} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                        <header className={styles.header}>
-                            <h1>Bordoversikt</h1>
-                            <p style={{ color: 'var(--text-muted)' }}>Dra og slipp bordene for å organisere rommet. Dobbeltklikk for å rotere.</p>
-                        </header>
+                {
+                    activeTab === 'map' && (
+                        <section className={styles.seating} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                            <header className={styles.header}>
+                                <h1>Bordoversikt</h1>
+                                <p style={{ color: 'var(--text-muted)' }}>Dra og slipp bordene for å organisere rommet. Dobbeltklikk for å rotere.</p>
+                            </header>
 
-                        <div
-                            className="glass"
-                            style={{
-                                flex: 1,
-                                position: 'relative',
-                                overflow: 'auto',
-                                borderRadius: '16px',
-                                border: '1px solid var(--glass-border)',
-                                cursor: draggingId ? 'grabbing' : 'default'
-                            }}
-                            onMouseMove={handleMouseMove}
-                            onMouseUp={handleMouseUp}
-                            onMouseLeave={handleMouseUp}
-                        >
-                            <div style={{ minWidth: '100%', minHeight: '100%', width: '3000px', height: '2000px', position: 'relative' }}>
-                                {localTables.map((table: any) => {
-                                    const pos = tablePositions[table.id] || { x: 0, y: 0 };
-                                    const isRound = table.shape === 'ROUND';
-                                    const isRect = table.shape === 'RECTANGLE';
-                                    const isLong = table.shape === 'LONG';
-                                    const size = isLong ? { w: 300, h: 80 } : isRect ? { w: 160, h: 80 } : { w: 100, h: 100 };
-                                    const rotation = (pos as any).rotation ?? table.rotation ?? 0;
-                                    const isLocked = (pos as any).isLocked ?? table.isLocked ?? false;
+                            <div
+                                className="glass"
+                                style={{
+                                    flex: 1,
+                                    position: 'relative',
+                                    overflow: 'auto',
+                                    borderRadius: '16px',
+                                    border: '1px solid var(--glass-border)',
+                                    cursor: draggingId ? 'grabbing' : 'default'
+                                }}
+                                onMouseMove={handleMouseMove}
+                                onMouseUp={handleMouseUp}
+                                onMouseLeave={handleMouseUp}
+                            >
+                                <div style={{ minWidth: '100%', minHeight: '100%', width: '3000px', height: '2000px', position: 'relative' }}>
+                                    {localTables.map((table: any) => {
+                                        const pos = tablePositions[table.id] || { x: 0, y: 0 };
+                                        const isRound = table.shape === 'ROUND';
+                                        const isRect = table.shape === 'RECTANGLE';
+                                        const isLong = table.shape === 'LONG';
+                                        const size = isLong ? { w: 300, h: 80 } : isRect ? { w: 160, h: 80 } : { w: 100, h: 100 };
+                                        const rotation = (pos as any).rotation ?? table.rotation ?? 0;
+                                        const isLocked = (pos as any).isLocked ?? table.isLocked ?? false;
 
-                                    return (
-                                        <div
-                                            key={table.id}
-                                            onMouseDown={(e) => {
-                                                if (!isLocked) handleMouseDown(e, table.id);
-                                            }}
-                                            onDoubleClick={async () => {
-                                                if (isLocked) return; // Prevent rotation if locked
-
-                                                // Read current rotation from ref to avoid closure staleness
-                                                const currentPos = tablePositionsRef.current[table.id] || {};
-                                                const currentRotation = (currentPos as any).rotation ?? table.rotation ?? 0;
-                                                const newRotation = (currentRotation + 45) % 360;
-
-                                                // Update local state immediately
-                                                const newPos = { ...currentPos, rotation: newRotation };
-
-                                                tablePositionsRef.current = {
-                                                    ...tablePositionsRef.current,
-                                                    [table.id]: newPos
-                                                };
-
-                                                setTablePositions(prev => ({
-                                                    ...prev,
-                                                    [table.id]: newPos
-                                                }));
-
-                                                setLocalTables(prev => prev.map(t =>
-                                                    t.id === table.id ? { ...t, rotation: newRotation } : t
-                                                ));
-
-                                                await updateTable(table.id, { rotation: newRotation });
-                                            }}
-                                            title={isLocked ? "Bordet er låst" : "Dobbeltklikk for å rotere, dra for å flytte"}
-                                            style={{
-                                                position: 'absolute',
-                                                left: pos.x,
-                                                top: pos.y,
-                                                width: size.w,
-                                                height: size.h,
-                                                borderRadius: isRound ? '50%' : '8px',
-                                                background: 'rgba(255, 255, 255, 0.1)',
-                                                backdropFilter: 'blur(10px)',
-                                                border: isLocked ? '1px dashed var(--text-muted)' : '1px solid var(--accent-gold)',
-                                                display: 'flex',
-                                                flexDirection: 'column',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                cursor: isLocked ? 'default' : 'grab',
-                                                userSelect: 'none',
-                                                zIndex: draggingId === table.id ? 10 : 1,
-                                                boxShadow: draggingId === table.id ? '0 10px 20px rgba(0,0,0,0.3)' : 'none',
-                                                transition: draggingId === table.id ? 'none' : 'box-shadow 0.2s, transform 0.3s',
-                                                color: 'var(--text-main)',
-                                                transform: `rotate(${rotation}deg)`
-                                            }}
-                                        >
-                                            {/* Lock Icon */}
+                                        return (
                                             <div
-                                                onMouseDown={(e) => e.stopPropagation()}
-                                                onDoubleClick={(e) => e.stopPropagation()}
-                                                onClick={async (e) => {
-                                                    e.stopPropagation();
-                                                    // Use current locked state from ref to avoid closure issues
-                                                    const currentPos = tablePositionsRef.current[table.id] || {};
-                                                    const currentLocked = (currentPos as any).isLocked ?? table.isLocked ?? false;
-                                                    const newLocked = !currentLocked;
+                                                key={table.id}
+                                                onMouseDown={(e) => {
+                                                    if (!isLocked) handleMouseDown(e, table.id);
+                                                }}
+                                                onDoubleClick={async () => {
+                                                    if (isLocked) return; // Prevent rotation if locked
 
-                                                    const newPos = { ...currentPos, isLocked: newLocked };
+                                                    // Read current rotation from ref to avoid closure staleness
+                                                    const currentPos = tablePositionsRef.current[table.id] || {};
+                                                    const currentRotation = (currentPos as any).rotation ?? table.rotation ?? 0;
+                                                    const newRotation = (currentRotation + 45) % 360;
+
+                                                    // Update local state immediately
+                                                    const newPos = { ...currentPos, rotation: newRotation };
+
                                                     tablePositionsRef.current = {
                                                         ...tablePositionsRef.current,
                                                         [table.id]: newPos
@@ -1664,147 +1686,202 @@ export default function AdminDashboard({ eventId, userId, userRole, guests, item
                                                     }));
 
                                                     setLocalTables(prev => prev.map(t =>
-                                                        t.id === table.id ? { ...t, isLocked: newLocked } : t
+                                                        t.id === table.id ? { ...t, rotation: newRotation } : t
                                                     ));
 
-                                                    await updateTable(table.id, { isLocked: newLocked });
+                                                    await updateTable(table.id, { rotation: newRotation });
                                                 }}
-                                                title={isLocked ? "Lås opp" : "Lås bordet"}
+                                                title={isLocked ? "Bordet er låst" : "Dobbeltklikk for å rotere, dra for å flytte"}
                                                 style={{
                                                     position: 'absolute',
-                                                    top: '-12px',
-                                                    right: '-12px',
-                                                    background: 'var(--background-main)',
-                                                    borderRadius: '50%',
-                                                    padding: '4px',
-                                                    border: '1px solid var(--glass-border)',
-                                                    cursor: 'pointer',
-                                                    zIndex: 20,
-                                                    transform: `rotate(${-rotation}deg)` // Keep icon upright
+                                                    left: pos.x,
+                                                    top: pos.y,
+                                                    width: size.w,
+                                                    height: size.h,
+                                                    borderRadius: isRound ? '50%' : '8px',
+                                                    background: 'rgba(255, 255, 255, 0.1)',
+                                                    backdropFilter: 'blur(10px)',
+                                                    border: isLocked ? '1px dashed var(--text-muted)' : '1px solid var(--accent-gold)',
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    cursor: isLocked ? 'default' : 'grab',
+                                                    userSelect: 'none',
+                                                    zIndex: draggingId === table.id ? 10 : 1,
+                                                    boxShadow: draggingId === table.id ? '0 10px 20px rgba(0,0,0,0.3)' : 'none',
+                                                    transition: draggingId === table.id ? 'none' : 'box-shadow 0.2s, transform 0.3s',
+                                                    color: 'var(--text-main)',
+                                                    transform: `rotate(${rotation}deg)`
                                                 }}
                                             >
-                                                {isLocked ? <Lock size={12} color="var(--text-muted)" /> : <Unlock size={12} color="var(--accent-gold)" />}
-                                            </div>
+                                                {/* Lock Icon */}
+                                                <div
+                                                    onMouseDown={(e) => e.stopPropagation()}
+                                                    onDoubleClick={(e) => e.stopPropagation()}
+                                                    onClick={async (e) => {
+                                                        e.stopPropagation();
+                                                        // Use current locked state from ref to avoid closure issues
+                                                        const currentPos = tablePositionsRef.current[table.id] || {};
+                                                        const currentLocked = (currentPos as any).isLocked ?? table.isLocked ?? false;
+                                                        const newLocked = !currentLocked;
 
-                                            <div style={{ transform: `rotate(${-rotation}deg)`, display: 'flex', flexDirection: 'column', alignItems: 'center', pointerEvents: 'none' }}>
-                                                <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{table.name}</span>
-                                                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{table.guests.length}/{table.capacity}</span>
-                                            </div>
-                                            {isLong && (
-                                                <div style={{ position: 'absolute', bottom: '4px', left: 0, right: 0, display: 'flex', justifyContent: 'space-evenly', padding: '0 10px' }}>
-                                                    {Array.from({ length: Math.min(table.capacity, 15) }).map((_, i) => (
-                                                        <div key={i} style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'rgba(255,255,255,0.4)' }} />
-                                                    ))}
+                                                        const newPos = { ...currentPos, isLocked: newLocked };
+                                                        tablePositionsRef.current = {
+                                                            ...tablePositionsRef.current,
+                                                            [table.id]: newPos
+                                                        };
+
+                                                        setTablePositions(prev => ({
+                                                            ...prev,
+                                                            [table.id]: newPos
+                                                        }));
+
+                                                        setLocalTables(prev => prev.map(t =>
+                                                            t.id === table.id ? { ...t, isLocked: newLocked } : t
+                                                        ));
+
+                                                        await updateTable(table.id, { isLocked: newLocked });
+                                                    }}
+                                                    title={isLocked ? "Lås opp" : "Lås bordet"}
+                                                    style={{
+                                                        position: 'absolute',
+                                                        top: '-12px',
+                                                        right: '-12px',
+                                                        background: 'var(--background-main)',
+                                                        borderRadius: '50%',
+                                                        padding: '4px',
+                                                        border: '1px solid var(--glass-border)',
+                                                        cursor: 'pointer',
+                                                        zIndex: 20,
+                                                        transform: `rotate(${-rotation}deg)` // Keep icon upright
+                                                    }}
+                                                >
+                                                    {isLocked ? <Lock size={12} color="var(--text-muted)" /> : <Unlock size={12} color="var(--accent-gold)" />}
                                                 </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    </section>
-                )}
 
-                {activeTab === 'testing' && (
-                    <section className={styles.seating}>
-                        <header className={styles.header}>
-                            <h1>Testing & Design System</h1>
-                            <p style={{ color: 'var(--text-muted)' }}>Validate styling, fonts, and visibility across the application.</p>
-                        </header>
-
-                        <div className={styles.tableGrid}>
-                            {/* Text Visibility Test */}
-                            <div className={`${styles.tableCard} glass`}>
-                                <h3>Text Visibility (Contrast)</h3>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
-                                    <div style={{ padding: '1rem', background: 'var(--bg-color)', border: '1px solid var(--glass-border)', borderRadius: '8px' }}>
-                                        <p style={{ color: 'var(--text-main)' }}>Standard Text on Background</p>
-                                        <p style={{ color: 'var(--text-muted)' }}>Muted Text on Background</p>
-                                    </div>
-                                    <div style={{ padding: '1rem', background: 'var(--card-bg)', border: '1px solid var(--glass-border)', borderRadius: '8px' }}>
-                                        <p style={{ color: 'var(--text-main)' }}>Standard Text on Card (Glass)</p>
-                                        <p style={{ color: 'var(--text-muted)' }}>Muted Text on Card (Glass)</p>
-                                    </div>
-                                    <div style={{ padding: '1rem', background: 'var(--accent-gold)', borderRadius: '8px', color: 'white' }}>
-                                        <p>Text on Accent Color (Gold)</p>
-                                    </div>
-                                    <div style={{ padding: '1rem', background: 'var(--accent-green)', borderRadius: '8px', color: 'white' }}>
-                                        <p>Text on Accent Color (Green)</p>
-                                    </div>
+                                                <div style={{ transform: `rotate(${-rotation}deg)`, display: 'flex', flexDirection: 'column', alignItems: 'center', pointerEvents: 'none' }}>
+                                                    <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{table.name}</span>
+                                                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{table.guests.length}/{table.capacity}</span>
+                                                </div>
+                                                {isLong && (
+                                                    <div style={{ position: 'absolute', bottom: '4px', left: 0, right: 0, display: 'flex', justifyContent: 'space-evenly', padding: '0 10px' }}>
+                                                        {Array.from({ length: Math.min(table.capacity, 15) }).map((_, i) => (
+                                                            <div key={i} style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'rgba(255,255,255,0.4)' }} />
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
+                        </section>
+                    )
+                }
 
-                            {/* Font Consistency Test */}
-                            <div className={`${styles.tableCard} glass`}>
-                                <h3>Typography & Fonts</h3>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
-                                    <div>
-                                        <h1>Heading 1 (Playfair Display)</h1>
-                                        <h2>Heading 2 (Playfair Display)</h2>
-                                        <h3>Heading 3 (Playfair Display)</h3>
-                                        <h4>Heading 4 (Playfair Display)</h4>
-                                    </div>
-                                    <hr style={{ borderColor: 'var(--glass-border)' }} />
-                                    <div>
-                                        <p style={{ marginBottom: '0.5rem' }}><strong>Body Text (Montserrat):</strong></p>
-                                        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
-                                    </div>
-                                    <div>
-                                        <p style={{ marginBottom: '0.5rem' }}><strong>Small Text / Muted:</strong></p>
-                                        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Dette er en liten tekst som brukes for metadata eller mindre viktig informasjon.</p>
-                                    </div>
-                                </div>
-                            </div>
+                {
+                    activeTab === 'testing' && (
+                        <section className={styles.seating}>
+                            <header className={styles.header}>
+                                <h1>Testing & Design System</h1>
+                                <p style={{ color: 'var(--text-muted)' }}>Validate styling, fonts, and visibility across the application.</p>
+                            </header>
 
-                            <div className={`${styles.tableCard} glass`}>
-                                <h3>Input Fields & Buttons</h3>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
-                                    <input
-                                        type="text"
-                                        placeholder="Standard Input"
-                                        className={styles.actualInput}
-                                        style={{
-                                            width: '100%',
-                                            borderBottomColor: 'var(--glass-border)',
-                                            background: 'rgba(255, 255, 255, 0.05)',
-                                            border: '1px solid var(--glass-border)',
-                                            borderRadius: '8px',
-                                            padding: '0.8rem',
-                                            color: 'var(--text-main)'
-                                        }}
-                                    />
-
-                                    <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '1rem' }}>
-                                        <div>
-                                            <p style={{ marginBottom: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Primary</p>
-                                            <button className="luxury-button">Luxury Button</button>
+                            <div className={styles.tableGrid}>
+                                {/* Text Visibility Test */}
+                                <div className={`${styles.tableCard} glass`}>
+                                    <h3>Text Visibility (Contrast)</h3>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
+                                        <div style={{ padding: '1rem', background: 'var(--bg-color)', border: '1px solid var(--glass-border)', borderRadius: '8px' }}>
+                                            <p style={{ color: 'var(--text-main)' }}>Standard Text on Background</p>
+                                            <p style={{ color: 'var(--text-muted)' }}>Muted Text on Background</p>
                                         </div>
-
-                                        <div>
-                                            <p style={{ marginBottom: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Proposal 1: Outline</p>
-                                            <button className="luxury-button-outline">Secondary Outline</button>
+                                        <div style={{ padding: '1rem', background: 'var(--card-bg)', border: '1px solid var(--glass-border)', borderRadius: '8px' }}>
+                                            <p style={{ color: 'var(--text-main)' }}>Standard Text on Card (Glass)</p>
+                                            <p style={{ color: 'var(--text-muted)' }}>Muted Text on Card (Glass)</p>
                                         </div>
-
-                                        <div>
-                                            <p style={{ marginBottom: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Proposal 2: Soft</p>
-                                            <button className="luxury-button-soft">Secondary Soft</button>
+                                        <div style={{ padding: '1rem', background: 'var(--accent-gold)', borderRadius: '8px', color: 'white' }}>
+                                            <p>Text on Accent Color (Gold)</p>
                                         </div>
-
-                                        <div>
-                                            <p style={{ marginBottom: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Proposal 3: Ghost</p>
-                                            <button className="luxury-button-ghost">Secondary Ghost</button>
+                                        <div style={{ padding: '1rem', background: 'var(--accent-green)', borderRadius: '8px', color: 'white' }}>
+                                            <p>Text on Accent Color (Green)</p>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-                    </section>
-                )}
 
-            </main>
+                                {/* Font Consistency Test */}
+                                <div className={`${styles.tableCard} glass`}>
+                                    <h3>Typography & Fonts</h3>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
+                                        <div>
+                                            <h1>Heading 1 (Playfair Display)</h1>
+                                            <h2>Heading 2 (Playfair Display)</h2>
+                                            <h3>Heading 3 (Playfair Display)</h3>
+                                            <h4>Heading 4 (Playfair Display)</h4>
+                                        </div>
+                                        <hr style={{ borderColor: 'var(--glass-border)' }} />
+                                        <div>
+                                            <p style={{ marginBottom: '0.5rem' }}><strong>Body Text (Montserrat):</strong></p>
+                                            <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
+                                        </div>
+                                        <div>
+                                            <p style={{ marginBottom: '0.5rem' }}><strong>Small Text / Muted:</strong></p>
+                                            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Dette er en liten tekst som brukes for metadata eller mindre viktig informasjon.</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className={`${styles.tableCard} glass`}>
+                                    <h3>Input Fields & Buttons</h3>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
+                                        <input
+                                            type="text"
+                                            placeholder="Standard Input"
+                                            className={styles.actualInput}
+                                            style={{
+                                                width: '100%',
+                                                borderBottomColor: 'var(--glass-border)',
+                                                background: 'rgba(255, 255, 255, 0.05)',
+                                                border: '1px solid var(--glass-border)',
+                                                borderRadius: '8px',
+                                                padding: '0.8rem',
+                                                color: 'var(--text-main)'
+                                            }}
+                                        />
+
+                                        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '1rem' }}>
+                                            <div>
+                                                <p style={{ marginBottom: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Primary</p>
+                                                <button className="luxury-button">Luxury Button</button>
+                                            </div>
+
+                                            <div>
+                                                <p style={{ marginBottom: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Proposal 1: Outline</p>
+                                                <button className="luxury-button-outline">Secondary Outline</button>
+                                            </div>
+
+                                            <div>
+                                                <p style={{ marginBottom: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Proposal 2: Soft</p>
+                                                <button className="luxury-button-soft">Secondary Soft</button>
+                                            </div>
+
+                                            <div>
+                                                <p style={{ marginBottom: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Proposal 3: Ghost</p>
+                                                <button className="luxury-button-ghost">Secondary Ghost</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    )
+                }
+
+            </main >
 
             {/* Add Admin Modal */}
-            <Modal
+            < Modal
                 isOpen={isAddAdminModalOpen}
                 title="Legg til administrator"
                 onClose={() => setIsAddAdminModalOpen(false)}
@@ -1849,10 +1926,10 @@ export default function AdminDashboard({ eventId, userId, userRole, guests, item
                         <button type="submit" className="luxury-button">Inviter</button>
                     </div>
                 </form>
-            </Modal>
+            </Modal >
 
             {/* View Admin Modal */}
-            <Modal
+            < Modal
                 isOpen={!!viewingAdmin}
                 title="Administrator Detaljer"
                 onClose={() => { setViewingAdmin(null); setIsEditingAdmin(false); }}
@@ -1966,10 +2043,10 @@ export default function AdminDashboard({ eventId, userId, userRole, guests, item
                         </div>
                     </div>
                 )}
-            </Modal>
+            </Modal >
 
             {/* Temp Password Modal */}
-            <Modal
+            < Modal
                 isOpen={!!tempPasswordMessage}
                 title="Bruker Opprettet"
                 onClose={() => setTempPasswordMessage(null)}
@@ -1995,7 +2072,7 @@ export default function AdminDashboard({ eventId, userId, userRole, guests, item
                     </p>
                     <button onClick={() => setTempPasswordMessage(null)} className="luxury-button">OK, jeg har kopiert det</button>
                 </div>
-            </Modal>
+            </Modal >
 
             <ConfirmationModal
                 isOpen={confirmModal.isOpen}
@@ -2005,6 +2082,6 @@ export default function AdminDashboard({ eventId, userId, userRole, guests, item
                 onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
                 isDestructive={true}
             />
-        </div>
+        </div >
     );
 }

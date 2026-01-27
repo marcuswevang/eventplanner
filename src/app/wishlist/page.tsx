@@ -4,19 +4,33 @@ import Link from "next/link";
 import { ChevronLeft, Gift, CheckCircle2 } from "lucide-react";
 import WishlistClient from "./WishlistClient";
 import { getEventTerm } from "@/lib/terminology";
+import { resolveEvent } from "@/lib/event";
+import { checkEventAuth } from "@/app/actions";
+import GuestProtectionWrapper from "@/components/GuestProtectionWrapper";
 
 export const dynamic = 'force-dynamic';
 
-export default async function WishlistPage() {
-    const event = await prisma.event.findFirst();
+export default async function WishlistPage({
+    searchParams
+}: {
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+}) {
+    const params = await searchParams;
+    const eventIdParam = params.eventId as string;
+    const event = await resolveEvent(eventIdParam);
 
     if (!event) {
         return <div>Ingen ønskeliste funnet.</div>;
     }
 
+    const eventId = event.id;
+    const settings = (event.settings as any) || {};
+    const config = (event.config as any) || {};
+
     // Check if wishlist is visible to guests
-    const config = event.config as any;
-    if (config?.wishlistVisible === false) {
+    const isShowing = settings.landingPage?.showWishlist !== false && config.wishlistEnabled !== false;
+
+    if (!isShowing) {
         return (
             <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-color)', textAlign: 'center', padding: '2rem' }}>
                 <div className="glass" style={{ padding: '3rem', borderRadius: '16px', maxWidth: '500px' }}>
@@ -30,72 +44,77 @@ export default async function WishlistPage() {
         );
     }
 
+    const isProtected = settings.landingPage?.protectedWishlist === true;
+    const isAuthenticated = await checkEventAuth(eventId);
+
     const term = getEventTerm(event.type);
 
     const items = await prisma.wishlistItem.findMany({
-        where: { eventId: event.id },
+        where: { eventId },
         orderBy: { createdAt: "asc" },
     });
 
     return (
-        <div className={styles.container}>
-            <nav className={styles.nav}>
-                <Link href=".." className={styles.backLink}>
-                    <ChevronLeft size={20} />
-                    <span>Tilbake</span>
-                </Link>
-            </nav>
+        <GuestProtectionWrapper eventId={eventId} isInitiallyAuthenticated={isAuthenticated || !isProtected}>
+            <div className={styles.container}>
+                <nav className={styles.nav}>
+                    <Link href={`/?eventId=${eventId}`} className={styles.backLink}>
+                        <ChevronLeft size={20} />
+                        <span>Tilbake</span>
+                    </Link>
+                </nav>
 
-            <main className={styles.main}>
-                <header className={styles.header}>
-                    <div className={styles.iconWrapper}>
-                        <Gift size={40} className={styles.mainIcon} />
-                    </div>
-                    <h1 className="title-gradient">{term}-ønskeliste</h1>
-                    <p className={styles.intro}>
-                        Her er en oversikt over ting vi ønsker oss til vårt nye hjem.
-                        Hvis du kjøper noe, vennligst marker det her slik at andre ser at det er kjøpt.
-                    </p>
-                </header>
-
-                <section className={styles.grid}>
-                    {items.length === 0 ? (
-                        <div className={`${styles.empty} glass`}>
-                            <p>Ønskelisten er foreløpig tom. Kom gjerne tilbake senere!</p>
+                <main className={styles.main}>
+                    <header className={styles.header}>
+                        <div className={styles.iconWrapper}>
+                            <Gift size={40} className={styles.mainIcon} />
                         </div>
-                    ) : (
-                        items.map((item: any) => (
-                            <div key={item.id} className={`${styles.card} glass ${item.isPurchased ? styles.purchased : ""}`}>
-                                <div className={styles.itemContent}>
-                                    {item.imageUrl && (
-                                        <div className={styles.imageWrapper}>
-                                            <img src={item.imageUrl} alt={item.title} className={styles.productImage} />
-                                        </div>
-                                    )}
-                                    <h3>{item.title}</h3>
-                                    {item.description && <p className={styles.description}>{item.description}</p>}
-                                    {item.link && (
-                                        <a href={item.link} target="_blank" rel="noopener noreferrer" className={styles.link}>
-                                            Se produktet
-                                        </a>
-                                    )}
-                                </div>
+                        <h1 className="title-gradient">{term}-ønskeliste</h1>
+                        <p className={styles.intro}>
+                            Her er en oversikt over ting vi ønsker oss til vårt nye hjem.
+                            Hvis du kjøper noe, vennligst marker det her slik at andre ser at det er kjøpt.
+                        </p>
+                    </header>
 
-                                <div className={styles.footer}>
-                                    {item.isPurchased ? (
-                                        <div className={styles.status}>
-                                            <CheckCircle2 size={20} className={styles.checkIcon} />
-                                            <span>Kjøpt av {item.purchasedBy}</span>
-                                        </div>
-                                    ) : (
-                                        <WishlistClient itemId={item.id} title={item.title} />
-                                    )}
-                                </div>
+                    <section className={styles.grid}>
+                        {items.length === 0 ? (
+                            <div className={`${styles.empty} glass`}>
+                                <p>Ønskelisten er foreløpig tom. Kom gjerne tilbake senere!</p>
                             </div>
-                        ))
-                    )}
-                </section>
-            </main>
-        </div>
+                        ) : (
+                            items.map((item: any) => (
+                                <div key={item.id} className={`${styles.card} glass ${item.isPurchased ? styles.purchased : ""}`}>
+                                    <div className={styles.itemContent}>
+                                        {item.imageUrl && (
+                                            <div className={styles.imageWrapper}>
+                                                <img src={item.imageUrl} alt={item.title} className={styles.productImage} />
+                                            </div>
+                                        )}
+                                        <h3>{item.title}</h3>
+                                        {item.description && <p className={styles.description}>{item.description}</p>}
+                                        {item.link && (
+                                            <a href={item.link} target="_blank" rel="noopener noreferrer" className={styles.link}>
+                                                Se produktet
+                                            </a>
+                                        )}
+                                    </div>
+
+                                    <div className={styles.footer}>
+                                        {item.isPurchased ? (
+                                            <div className={styles.status}>
+                                                <CheckCircle2 size={20} className={styles.checkIcon} />
+                                                <span>Kjøpt av {item.purchasedBy}</span>
+                                            </div>
+                                        ) : (
+                                            <WishlistClient itemId={item.id} title={item.title} />
+                                        )}
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </section>
+                </main>
+            </div>
+        </GuestProtectionWrapper>
     );
 }

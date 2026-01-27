@@ -78,8 +78,11 @@
 
 .main {
     flex: 1;
-    padding: 2rem 3rem;
+    padding: 2rem;
     overflow-y: auto;
+    max-width: 1400px;
+    margin: 0 auto;
+    width: 100%;
 }
 
 .header {
@@ -124,8 +127,21 @@
 
 .tableGrid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 2rem;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.5rem;
+}
+
+.settingsGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 1.5rem;
+    align-items: start;
+}
+
+@media (max-width: 1200px) {
+    .settingsGrid {
+        grid-template-columns: 1fr;
+    }
 }
 
 .tableCard {
