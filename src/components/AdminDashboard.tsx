@@ -1560,6 +1560,119 @@ export default function AdminDashboard({ eventId, userId, userRole, guests, item
                                 )
                             }
 
+                            {/* Info Page Details - Configurable */}
+                            {
+                                (event.config?.infoVisible !== false) && (
+                                    <div className={`${styles.tableCard} glass`}>
+                                        <h3>ℹ️ Praktisk Informasjon</h3>
+                                        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                                            Kontaktinformasjon og detaljer som vises på "Info"-siden.
+                                        </p>
+
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                                <label style={{ fontSize: "0.8rem" }}>Toastmaster Navn</label>
+                                                <input
+                                                    type="text"
+                                                    defaultValue={(event.settings as any)?.toastmasterName || ""}
+                                                    placeholder="Navn"
+                                                    className="sexy-input"
+                                                    onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), toastmasterName: e.target.value } })}
+                                                />
+                                            </div>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                                <label style={{ fontSize: "0.8rem" }}>Toastmaster Tlf</label>
+                                                <input
+                                                    type="text"
+                                                    defaultValue={(event.settings as any)?.toastmasterPhone || ""}
+                                                    placeholder="Telefon"
+                                                    className="sexy-input"
+                                                    onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), toastmasterPhone: e.target.value } })}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <h4 style={{ fontSize: '0.9rem', marginBottom: '0.5rem', marginTop: '1rem', color: 'var(--accent-gold)' }}>Forlovere (Brud)</h4>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '0.5rem' }}>
+                                            <input
+                                                type="text"
+                                                defaultValue={(event.settings as any)?.maidOfHonor1Name || ""}
+                                                placeholder="Navn (1)"
+                                                className="sexy-input"
+                                                onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), maidOfHonor1Name: e.target.value } })}
+                                            />
+                                            <input
+                                                type="text"
+                                                defaultValue={(event.settings as any)?.maidOfHonor1Phone || ""}
+                                                placeholder="Tlf (1)"
+                                                className="sexy-input"
+                                                onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), maidOfHonor1Phone: e.target.value } })}
+                                            />
+                                            <input
+                                                type="text"
+                                                defaultValue={(event.settings as any)?.maidOfHonor2Name || ""}
+                                                placeholder="Navn (2 - valgfritt)"
+                                                className="sexy-input"
+                                                onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), maidOfHonor2Name: e.target.value } })}
+                                            />
+                                            <input
+                                                type="text"
+                                                defaultValue={(event.settings as any)?.maidOfHonor2Phone || ""}
+                                                placeholder="Tlf (2 - valgfritt)"
+                                                className="sexy-input"
+                                                onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), maidOfHonor2Phone: e.target.value } })}
+                                            />
+                                        </div>
+
+                                        <h4 style={{ fontSize: '0.9rem', marginBottom: '0.5rem', marginTop: '1rem', color: 'var(--accent-gold)' }}>Forlovere (Brudgom)</h4>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                                            <input
+                                                type="text"
+                                                defaultValue={(event.settings as any)?.bestMan1Name || ""}
+                                                placeholder="Navn (1)"
+                                                className="sexy-input"
+                                                onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), bestMan1Name: e.target.value } })}
+                                            />
+                                            <input
+                                                type="text"
+                                                defaultValue={(event.settings as any)?.bestMan1Phone || ""}
+                                                placeholder="Tlf (1)"
+                                                className="sexy-input"
+                                                onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), bestMan1Phone: e.target.value } })}
+                                            />
+                                            <input
+                                                type="text"
+                                                defaultValue={(event.settings as any)?.bestMan2Name || ""}
+                                                placeholder="Navn (2 - valgfritt)"
+                                                className="sexy-input"
+                                                onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), bestMan2Name: e.target.value } })}
+                                            />
+                                            <input
+                                                type="text"
+                                                defaultValue={(event.settings as any)?.bestMan2Phone || ""}
+                                                placeholder="Tlf (2 - valgfritt)"
+                                                className="sexy-input"
+                                                onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), bestMan2Phone: e.target.value } })}
+                                            />
+                                        </div>
+
+                                        <div style={{ marginTop: '1rem' }}>
+                                            <label style={{ fontSize: "0.8rem", display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <Camera size={14} /> Instagram Hashtag
+                                            </label>
+                                            <input
+                                                type="text"
+                                                defaultValue={(event.settings as any)?.instagramHashtag || ""}
+                                                placeholder="#vårtbryllup"
+                                                className="sexy-input"
+                                                style={{ marginTop: '0.5rem' }}
+                                                onBlur={(e) => updateEventSettings(eventId, { settings: { ...(event.settings || {}), instagramHashtag: e.target.value } })}
+                                            />
+                                        </div>
+                                    </div>
+                                )
+                            }
+
                             <div className={`${styles.tableCard} glass`}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                                     <h3 style={{ margin: 0 }}>Administratorer</h3>

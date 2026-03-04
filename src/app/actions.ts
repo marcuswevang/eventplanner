@@ -166,12 +166,12 @@ export async function getUserEvents(userId: string) {
             return { error: "Ikke autorisert" };
         }
 
+        const whereClause = (currentUserRole === "SUPER_ADMIN")
+            ? {}
+            : { users: { some: { id: userId } } };
+
         const events = await prisma.event.findMany({
-            where: {
-                users: {
-                    some: { id: userId }
-                }
-            },
+            where: whereClause,
             orderBy: { date: "asc" }
         });
         return { events };
